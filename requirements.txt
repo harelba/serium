@@ -1,0 +1,2 @@
+# to be moved to dev requirements later on
+pytest==3.1.2
