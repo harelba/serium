@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ "x$VIRTUAL_ENV" == "x" ];
+then
+        echo "Needs to be in the pycase virtual env. Run source pycase-activate"
+	exit 1
+fi
+
+pytest "$@"
