@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Todo support linux
+
+set -e
+
+if [ "x$VIRTUAL_ENV" != "x" ];
+then
+        echo "This installation script should be run without a virtualenv. Run deactivate before running it"
+        exit 2
+fi
+
+set -u
+
+echo "sudo capability is needed for this script to run. Enter your password if needed"
+sudo whoami > /dev/null # This is just a dummy command to force sudo password request if needed
+echo "Continuing with sudo capabilities"
+
+
+echo "Installing pip + virtualenv stuff"
+pip install virtualenv
+pip install virtualenvwrapper
+
+set +e
+set +u
+
+source `which virtualenvwrapper.sh`
+echo "Creating virtual environment"
+mkvirtualenv pycase -p `which python`
+set -u
+
+echo
+echo '====== Add the following to your .bashrc if needed:'
+echo '  source `which virtualenvwrapper.sh`'

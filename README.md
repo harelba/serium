@@ -20,7 +20,9 @@ lots of stuff to do:
 3. Generalize serialization to other formats
 
 ## Installation
-no pip install yet. Will be done soon.
+no pip install yet. Will be done soon. 
+
+To test it, install the dev env. See below
 
 ## Usage Example
 
@@ -101,4 +103,9 @@ print reconstructed_v
 
 
 
+## Dev envrionment
+1. Clone
+2. Run `dev/prepare-dev-env` (one time only, creates a virtualenv called pycase)
+3. Run `source pycase-activate` every time you wanna meddle with the project
+4. pycase module will be part of the venv. You can write python code that uses `from pycase... import`
 
