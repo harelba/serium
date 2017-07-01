@@ -27,7 +27,7 @@ To test it, install the dev env. See below
 ## Usage Example
 
 
-```
+```python
 #!/usr/bin/env python
 
 from pycase.caseclasses import CaseClass
