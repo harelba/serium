@@ -15,9 +15,9 @@ Not production grade yet. Will be soon I hope. Please provide any feedback you t
 
 lots of stuff to do:
 0. Make it production grade
-1. IDL for case classes will be taken from a protobuf definition or similar.
-2. Make "API" less verbose
-3. Generalize serialization to other formats
+1. Make "API" less verbose, perhaps make use of python type hinting
+2. Generalize serialization to other formats
+3. IDL for case classes will be taken from a protobuf definition or similar.
 
 ## Installation
 no pip install yet. Will be done soon. 
