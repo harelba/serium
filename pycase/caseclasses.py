@@ -25,6 +25,11 @@ class CaseClassSelfType(object):
         pass
 
 
+class CaseClassTypeAsString(object):
+    def __init__(self, real_type):
+        self.real_type = real_type
+
+
 class CaseClassSubTypeKey(object):
     def __init__(self, subtype_value_field_name):
         self.subtype_value_field_name = subtype_value_field_name
@@ -61,6 +66,8 @@ class FrozenCaseClassMetaClass(type):
                     expected_type = dict
                 if isinstance(expected_type, CaseClassSelfType):
                     expected_type = cls
+                if isinstance(expected_type, CaseClassTypeAsString):
+                    expected_type = expected_type.real_type
                 if isinstance(expected_type, CaseClassSubTypeKey):
                     expected_type = str  # Verify that the key is a string
                 if isinstance(expected_type, CaseClassSubTypeValue):
@@ -75,6 +82,16 @@ class FrozenCaseClassMetaClass(type):
                 if type(arg) != expected_type:
                     raise CaseClassException("Expected type for parameter {} is {}. Got value of type {}".format(field_name, expected_type, type(arg)))
 
+        def check_actual_parameters(expected_types, d):
+            actual_field_names = set(d.keys())
+            expected_field_names = set(expected_types.keys())
+
+            extra = actual_field_names.difference(expected_field_names)
+            missing = expected_field_names.difference(actual_field_names)
+
+            if len(extra) > 0 or len(missing):
+                raise CaseClassException('Missing/Extra arguments provided for case class {}. Extra fields are {} Missing fields are {}'.format(cls, extra, missing))
+
         def override_setattr_after(fn):
             def _wrapper(*args, **kwargs):
                 cls.__setattr__ = object.__setattr__
@@ -83,6 +100,7 @@ class FrozenCaseClassMetaClass(type):
                     fn(*args, **kwargs)
                 except TypeError:
                     raise CaseClassException('Missing data for creating case class {}'.format(cls))
+                check_actual_parameters(cls.CASE_CLASS_EXPECTED_TYPES, args[0].__dict__)
                 cls.__setattr__ = augmented_setattr
 
             return _wrapper
@@ -156,6 +174,8 @@ class CaseClass(object):
                 return {cc_value(k, key_type): cc_value(v, value_type) for k, v in v.iteritems()}
             if type(expected_type) is CaseClassSelfType:
                 return cc_value(v, self.__class__)  # TODO probably wrong
+            if type(expected_type) is CaseClassTypeAsString:
+                return cc_value(str(v), str)
             if type(expected_type) is CaseClassSubTypeKey:
                 return cc_value(v, str)
             if type(expected_type) is CaseClassSubTypeValue:
@@ -175,9 +195,12 @@ class CaseClass(object):
                 else:
                     raise CaseClassException("Expected CaseClass of type {} and got instead value of type {}. Value is {}".format(expected_type, type(v), v))
             else:
-                return expected_type(v)
+                if isinstance(v, expected_type):
+                    return v
+                else:
+                    return expected_type(v)
 
-        return {field_name: cc_value(field_value, self.__class__.CASE_CLASS_EXPECTED_TYPES[field_name]) # pylint: disable=unsubscriptable-object
+        return {field_name: cc_value(field_value, self.__class__.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                 for field_name, field_value in self.__dict__.iteritems()}
 
     def __getattr__(self, item):
@@ -218,6 +241,8 @@ class CaseClass(object):
                 return {value_with_cc_support(k, key_type): value_with_cc_support(v, value_type) for k, v in v.iteritems()}
             if type(expected_type) is CaseClassSelfType:
                 return value_with_cc_support(v, cls)
+            if type(expected_type) is CaseClassTypeAsString:
+                return value_with_cc_support(expected_type.real_type(v), expected_type.real_type)
             if type(expected_type) is CaseClassSubTypeKey:
                 return value_with_cc_support(v, str)
             if type(expected_type) is CaseClassSubTypeValue:
@@ -233,12 +258,14 @@ class CaseClass(object):
             if issubclass(expected_type, CaseClass):
                 return expected_type._from_dict(v)
             else:
-                # TODO Type checking
-                return expected_type(v)
+                if isinstance(v, expected_type):
+                    return v
+                else:
+                    return expected_type(v)
 
         cls.check_expected_types_metadata()
         cls.check_data(d)
-        kwargs = {field_name: value_with_cc_support(d[field_name], cls.CASE_CLASS_EXPECTED_TYPES[field_name]) # pylint: disable=unsubscriptable-object
+        kwargs = {field_name: value_with_cc_support(d[field_name], cls.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                   for field_name, field_type in d.iteritems()}
         # kwargs = {field_name: value_with_cc_support(d[field_name], field_type) for field_name, field_type in cls.CASE_CLASS_EXPECTED_TYPES.iteritems()}
         return cls(**kwargs)
@@ -246,7 +273,7 @@ class CaseClass(object):
 
 def cc_to_dict(cc):
     if not isinstance(cc, CaseClass):
-        raise CaseClassException('Must provide a case class')
+        raise CaseClassException('Must provide a case class ({})'.format(cc))
     return cc._to_dict()
 
 
@@ -261,6 +288,8 @@ def cc_to_json_str(cc, **kwargs):
 
 
 def cc_from_json_str(s, cc_type):
+    if isinstance(cc_type, CaseClass):
+        raise CaseClassException('Must provide a case class type (actual type is {})'.format(type(cc_type)))
     return cc_from_dict(json.loads(s), cc_type)
 
 
@@ -269,4 +298,4 @@ def cc_from_dict(d, cc_type):
 
 
 def cc_check(o, cc_type):
-    return issubclass(o, cc_type)
+    return isinstance(o, cc_type)
