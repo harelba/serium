@@ -2,19 +2,44 @@
 from collections import OrderedDict
 
 from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
-    CaseClassSubTypeValue
+    CaseClassSubTypeValue, CaseClassTypeAsString
 from unittest import TestCase
 import json
 import pytest
+import uuid
 
 
 class A(CaseClass):
     CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int), ('c', int)])
 
-    def __init__(self, a, b, c=3):
+    def __init__(self, a, b, c):
         self.a = a
         self.b = b
         self.c = c
+
+
+# New version of class A() with a new field, and with default value. Deserialization from an old A() instance
+# will succeed.
+class A2(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int), ('c', int), ('d', str)])
+
+    def __init__(self, a, b, c, d='my_new_field_default_value'):
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
+
+
+# New version of class A() with a new field, but without a default value. Deserialization from an old A() instance
+# will fail (See A2 above)
+class A3(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int), ('c', int), ('d', str)])
+
+    def __init__(self, a, b, c, d):
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
 
 
 class B(CaseClass):
@@ -43,6 +68,13 @@ class S(CaseClass):
         self.myint = myint
         self.a_type = a_type
         self.b_type = b_type
+
+
+class U(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('my_unicode_string', unicode)])
+
+    def __init__(self, my_unicode_string):
+        self.my_unicode_string = my_unicode_string
 
 
 class CaseClassWithLists(CaseClass):
@@ -97,6 +129,15 @@ class CaseClassWithoutExpectedTypes(CaseClass):
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+
+class CaseClassWithUUID(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+        ('u', CaseClassTypeAsString(uuid.UUID))
+    ])
+
+    def __init__(self, u):
+        self.u = u
 
 
 class BasicTests(TestCase):
@@ -365,6 +406,85 @@ class BasicTests(TestCase):
         assert deserialized.mydict['a'] == B('q', 'w')
         assert deserialized.mydict['b'] == B('w', 'e')
 
+    def test_deserialization_from_standard_json(self):
+        json_str = """
+            {
+                "myint" : 100,
+                "a_type": {
+                    "a" : 200,
+                    "b": 300,
+                    "c": 400
+                },
+                "b_type": {
+                    "a": "str1",
+                    "b": "str2"
+                }
+            }
+        """
+        s = cc_from_json_str(json_str, S)
+        assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
+
+    def test_deserialization_from_standard_json_as_unicode(self):
+        json_str = u"""
+            {
+                "myint" : 100,
+                "a_type": {
+                    "a" : 200,
+                    "b": 300,
+                    "c": 400
+                },
+                "b_type": {
+                    "a": "str1",
+                    "b": "str2"
+                }
+            }
+        """
+        s = cc_from_json_str(json_str, S)
+        assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
+
+    def test_deserialization_from_manually_deserialized_json(self):
+        json_str = """
+            {
+                "myint" : 100,
+                "a_type": {
+                    "a" : 200,
+                    "b": 300,
+                    "c": 400
+                },
+                "b_type": {
+                    "a": "str1",
+                    "b": "str2"
+                }
+            }
+        """
+        d = json.loads(json_str)
+        s = cc_from_dict(d, S)
+        assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
+
+    def test_unicode_serde(self):
+        u = U(u'ASCII\xe0\xe8\xec\xf2\xf9\xa4')
+
+        new_u = cc_from_json_str(cc_to_json_str(u), U)
+
+        assert new_u == u
+        assert type(new_u.my_unicode_string) == unicode
+        assert new_u.my_unicode_string == u'ASCII\xe0\xe8\xec\xf2\xf9\xa4'
+        assert len(new_u.my_unicode_string) == len(u.my_unicode_string)
+        assert len(new_u.my_unicode_string) == 11
+
+    def test_unicode_serialization(self):
+        u = U(u'ASCII\xe0\xe8\xec\xf2\xf9\xa4')
+
+        d = cc_to_dict(u)
+        assert type(d['my_unicode_string']) == unicode
+        assert d['my_unicode_string'] == u'ASCII\xe0\xe8\xec\xf2\xf9\xa4'
+
+        json_str_in_utf8 = json.dumps(d)
+        j = json.loads(json_str_in_utf8, encoding='utf-8')
+        assert j.keys() == ['my_unicode_string']
+        assert type(j['my_unicode_string']) == unicode
+        assert len(j['my_unicode_string']) == 11
+
     def test_copy(self):
         a1 = A(1, 2, 3)
         a2 = a1.copy(b=4)
@@ -455,6 +575,47 @@ class BasicTests(TestCase):
 
         assert [child.value for child in new_r1.children] == range(10)
         assert [len(child.children) for child in new_r1.children] == [3] * 10
+
+    def test_ignoring_extra_fields(self):
+        a1 = A(10, 20, 30)
+
+        serialized_a1 = cc_to_json_str(a1)
+
+        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2)
+        assert deserialized_a1_by_a2 == A2(10, 20, 30, 'my_new_field_default_value')
+
+
+    def test_ignoring_extra_fields_fails_without_default_values(self):
+        a1 = A(10, 20, 30)
+
+        serialized_a1 = cc_to_json_str(a1)
+
+        with self.assertRaises(CaseClassException):
+            deserialized_a1_by_a3 = cc_from_json_str(serialized_a1, A3)
+
+    def test_cc_type_as_string(self):
+        u = CaseClassWithUUID(uuid.uuid4())
+
+        new_u = cc_from_json_str(cc_to_json_str(u), CaseClassWithUUID)
+
+        assert new_u == u
+
+    def test_cc_type_as_string__type_check_fails(self):
+        with self.assertRaises(CaseClassException):
+            u = CaseClassWithUUID('1212121')
+
+    def test_cc_type_as_string__type_check_fails_on_deserialization(self):
+        j = """{ "u" : 2000 }"""
+
+        with self.assertRaises(CaseClassException):
+            new_u = cc_from_json_str(j, CaseClassWithUUID)
+
+    def test_cc_type_as_string__deserialization_succeeds(self):
+        j = """{ "u" : "cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd" }"""
+
+        new_u = cc_from_json_str(j, CaseClassWithUUID)
+
+        assert new_u == CaseClassWithUUID(uuid.UUID('cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd'))
 
 
 class CaseClassSubType1(CaseClass):

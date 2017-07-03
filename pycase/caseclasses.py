@@ -13,31 +13,67 @@ class CaseClassListType(object):
     def __init__(self, element_type):
         self.element_type = element_type
 
+    def __str__(self):
+        return "CaseClassListType(element_type={}".format(repr(self.element_type))
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class CaseClassDictType(object):
     def __init__(self, key_type, value_type):
         self.key_type = key_type
         self.value_type = value_type
 
+    def __str__(self):
+        return "CaseClassDictType(key_type={},value_type={})".format(repr(self.key_type), repr(self.value_type))
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class CaseClassSelfType(object):
     def __init__(self):
         pass
+
+    def __str__(self):
+        return "CaseClassSelfType()"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class CaseClassTypeAsString(object):
     def __init__(self, real_type):
         self.real_type = real_type
 
+    def __str__(self):
+        return "CaseClassTypeAsString(real_type={})".format(repr(self.real_type))
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class CaseClassSubTypeKey(object):
     def __init__(self, subtype_value_field_name):
         self.subtype_value_field_name = subtype_value_field_name
 
+    def __str__(self):
+        return "CaseClassSubTypeKey(subtype_value_field_name={})".format(repr(self.subtype_value_field_name))
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class CaseClassSubTypeValue(object):
     def __init__(self, subtype_key_field_name):
         self.subtype_key_field_name = subtype_key_field_name
+
+    def __str__(self):
+        return "CaseClassSubTypeValue(subtype_key_field_name={})".format(repr(self.subtype_key_field_name))
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class FrozenCaseClassMetaClass(type):
@@ -82,6 +118,7 @@ class FrozenCaseClassMetaClass(type):
                 if type(arg) != expected_type:
                     raise CaseClassException("Expected type for parameter {} is {}. Got value of type {}".format(field_name, expected_type, type(arg)))
 
+        # check_actual_parameters is called only after __init__ is done, to prevent the need for any reflection
         def check_actual_parameters(expected_types, d):
             actual_field_names = set(d.keys())
             expected_field_names = set(expected_types.keys())
@@ -96,10 +133,15 @@ class FrozenCaseClassMetaClass(type):
             def _wrapper(*args, **kwargs):
                 cls.__setattr__ = object.__setattr__
                 check_parameter_types(cls.CASE_CLASS_EXPECTED_TYPES, args[1:], kwargs)
+                # Theoretically, we would have wanted to test the actual parameters here, but this would require performing reflection stuff, and this in turn
+                # would require optimizations.
+                # So check_actual_parameters is called after the fn() call (which is actually the call to __init__ on the case class), and
+                # tests the actual parameters. This means that the call to __init__ might fail and this is the reason for catching the exception below.
                 try:
                     fn(*args, **kwargs)
-                except TypeError:
-                    raise CaseClassException('Missing data for creating case class {}'.format(cls))
+                except TypeError as e:
+                    raise CaseClassException(
+                        'Missing data for creating case class {}. If this is a new version of another case class, then make sure that all new fields have defaults. {}'.format(cls, e))
                 check_actual_parameters(cls.CASE_CLASS_EXPECTED_TYPES, args[0].__dict__)
                 cls.__setattr__ = augmented_setattr
 
@@ -242,7 +284,14 @@ class CaseClass(object):
             if type(expected_type) is CaseClassSelfType:
                 return value_with_cc_support(v, cls)
             if type(expected_type) is CaseClassTypeAsString:
-                return value_with_cc_support(expected_type.real_type(v), expected_type.real_type)
+                if isinstance(v, expected_type.real_type):
+                    return value_with_cc_support(v, expected_type.real_type)
+                else:
+                    try:
+                        real_v = expected_type.real_type(v)
+                    except Exception as ee:
+                        raise CaseClassException('Could not convert the value {} to the expected type {}. Low-level error:{}'.format(v, expected_type, str(ee)))
+                    return value_with_cc_support(real_v, expected_type.real_type)
             if type(expected_type) is CaseClassSubTypeKey:
                 return value_with_cc_support(v, str)
             if type(expected_type) is CaseClassSubTypeValue:
@@ -277,25 +326,31 @@ def cc_to_dict(cc):
     return cc._to_dict()
 
 
-def cc_to_json_str(cc, **kwargs):
+def cc_to_json_str(cc, encoding='utf-8', **kwargs):
     def serialize_cc_if_needed(v):
         if isinstance(v, CaseClass):
             return cc_to_dict(v)
         else:
             return v
 
-    return json.dumps(cc_to_dict(cc), default=serialize_cc_if_needed, indent=2, **kwargs)
+    return json.dumps(cc_to_dict(cc), encoding=encoding, default=serialize_cc_if_needed, indent=2, **kwargs)
 
 
-def cc_from_json_str(s, cc_type):
+def cc_from_json_str(s, cc_type, encoding='utf-8'):
     if isinstance(cc_type, CaseClass):
         raise CaseClassException('Must provide a case class type (actual type is {})'.format(type(cc_type)))
-    return cc_from_dict(json.loads(s), cc_type)
+    return cc_from_dict(json.loads(s, encoding=encoding), cc_type)
 
 
-def cc_from_dict(d, cc_type):
+def cc_from_dict(d, cc_type, raise_on_empty=True):
+    if d is None:
+        if raise_on_empty:
+            raise CaseClassException('Could not create case class {} - Empty input'.format(cc_type))
+        else:
+            return None
     return cc_type._from_dict(d)
 
 
 def cc_check(o, cc_type):
-    return isinstance(o, cc_type)
+    if not isinstance(o, cc_type):
+        raise CaseClassException('Object is not of type {}. Object: {}'.format(cc_type, repr(o)))
