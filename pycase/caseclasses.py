@@ -310,7 +310,10 @@ class CaseClass(object):
                 if isinstance(v, expected_type):
                     return v
                 else:
-                    return expected_type(v)
+                    try:
+                        return expected_type(v)
+                    except Exception as ee:
+                        raise CaseClassException('Value is of type {} while expected type is {}. Original Error: {}. Actual Value: {}'.format(type(v), expected_type, str(ee), v))
 
         cls.check_expected_types_metadata()
         cls.check_data(d)
@@ -321,6 +324,8 @@ class CaseClass(object):
 
 
 def cc_to_dict(cc):
+    if isinstance(cc, list):
+        return [cc_to_dict(e) for e in cc]
     if not isinstance(cc, CaseClass):
         raise CaseClassException('Must provide a case class ({})'.format(cc))
     return cc._to_dict()
@@ -348,9 +353,16 @@ def cc_from_dict(d, cc_type, raise_on_empty=True):
             raise CaseClassException('Could not create case class {} - Empty input'.format(cc_type))
         else:
             return None
+    if not isinstance(d,dict):
+        raise CaseClassException('Must provide a dict to convert to a case class. Provided object of type {}. value {}'.format(type(d),d))
     return cc_type._from_dict(d)
 
 
 def cc_check(o, cc_type):
     if not isinstance(o, cc_type):
         raise CaseClassException('Object is not of type {}. Object: {}'.format(cc_type, repr(o)))
+
+# TODO
+#def cc_deep_copy(o,**kwargs) where kwargs is a deep-key dict (e.g. x.y.z)
+
+## TODO autosupport lists and dicts in cc_*
