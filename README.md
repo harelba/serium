@@ -30,6 +30,8 @@ To test it, install the dev env. See below
 ```python
 #!/usr/bin/env python
 
+# This tutorial is meant to be executable. `print` output has been put inside multi-line strings immediately following the print statement.
+
 import logging
 import sys
 from collections import OrderedDict
