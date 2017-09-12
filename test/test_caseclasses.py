@@ -601,7 +601,7 @@ class BasicTests(TestCase):
 
         serialized_a1 = cc_to_json_str(a1)
 
-        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2, ignore_versioning=True)
+        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2)
         assert deserialized_a1_by_a2 == A2(10, 20, 30, 'my_new_field_default_value')
 
     def test_ignoring_extra_fields_fails_without_default_values(self):

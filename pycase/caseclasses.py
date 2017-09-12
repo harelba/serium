@@ -3,11 +3,43 @@ import itertools
 import json
 import sys
 from collections import OrderedDict
+import logging
 
+LOG = logging.getLogger('pycase')
 
 class CaseClassException(StandardError):
     def __init__(self, msg):
         super(CaseClassException, self).__init__(msg)
+
+
+class VersionNotFoundCaseClassException(CaseClassException):
+    def __init__(self, ccvt, module):
+        self.ccvt = ccvt
+        self.module = module
+        super(VersionNotFoundCaseClassException, self).__init__('Could not find case class definition for type {} in module {}'.format(ccvt, module))
+
+
+class MissingVersionDataCaseClassException(CaseClassException):
+    def __init__(self, ccvt):
+        self.ccvt = ccvt
+        super(MissingVersionDataCaseClassException, self).__init__('Could not find version info in data when deserialization type {} '.format(ccvt))
+
+
+class IncompatibleTypesCaseClassException(CaseClassException):
+    def __init__(self, ccvt, self_vt):
+        self.ccvt = ccvt
+        self.self_vt = self_vt
+        super(IncompatibleTypesCaseClassException, self).__init__('Trying to deserialize incompatible types: {} vs {}'.format(ccvt, self_vt))
+
+
+class MigrationFunctionCaseClassException(CaseClassException):
+    def __init__(self, intermediate_instance, from_version, to_version, e):
+        self.intermediate_instance = intermediate_instance
+        self.from_version = from_version
+        self.to_version = to_version
+        self.e = e
+        super(MigrationFunctionCaseClassException, self).__init__('Exception while applying migration function on instance {} from version {} to version {}. Original exception is {}'.format(
+            intermediate_instance, from_version, to_version, e))
 
 
 class CaseClassListType(object):
@@ -80,12 +112,12 @@ class CaseClassSubTypeValue(object):
 class FrozenCaseClassMetaClass(type):
     def __new__(mcs, clsname, bases, d):
         def augmented_setattr(self, name, value):
-            if self._unfrozen:
+            if '_unfrozen' in self.__dict__ and self._unfrozen:
                 object.__setattr__(self, name, value)
             else:
                 if not hasattr(self, name):
                     raise CaseClassException("'" + name + "' not an attribute of " + clsname + " object. and can't update after creation anyway")
-                raise CaseClassException("Caseclass is immutable - cannot update after creation. Use copy() to create a modified instance {}".format(id(self)))
+                raise CaseClassException("Caseclass is immutable - cannot update after creation. Use copy() to create a modified instance {}. field name {} field value {}".format(self,name,repr(value)))
 
         def check_parameter_types(expected_types, args, kwargs):
             if expected_types is None:
@@ -102,8 +134,10 @@ class FrozenCaseClassMetaClass(type):
                 expected_type = expected_types[field_name]
                 if isinstance(expected_type, CaseClassListType):
                     expected_type = list
+                    # TODO Check element types
                 if isinstance(expected_type, CaseClassDictType):
                     expected_type = dict
+                    # TODO Check key/value types
                 if isinstance(expected_type, CaseClassSelfType):
                     expected_type = cls
                 if isinstance(expected_type, CaseClassTypeAsString):
@@ -211,7 +245,14 @@ def find_versioned_cc(cls, ccvt):
         t = getattr(target_module, vt_class_name)
         return t
     except AttributeError:
-        raise CaseClassException('Could not find case class definition for type {} in module {}'.format(ccvt, target_module))
+        try:
+            t = getattr(target_module, cls.get_versioned_type().cc_type_name)
+            if t.CC_V == ccvt.version:
+                return t
+            else:
+                raise AttributeError('')
+        except AttributeError:
+            raise VersionNotFoundCaseClassException(ccvt, target_module)
 
 
 def versioned_type_to_str(vt):
@@ -266,7 +307,7 @@ class CaseClass(object):
 
     # Missing some stuff for completeness, but not urgent
 
-    def _to_dict(self, ignore_versioning=False):
+    def _to_dict(self):
         subtype_keys_dict = {field_name: self.__dict__[field_name] for field_name, field_type in self.__class__.CASE_CLASS_EXPECTED_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
@@ -299,7 +340,7 @@ class CaseClass(object):
                                                                                                                                                                 expected_type.subtype_key_field_name))
             elif issubclass(expected_type, CaseClass):
                 if isinstance(v, CaseClass):
-                    return v._to_dict(ignore_versioning=ignore_versioning)
+                    return v._to_dict()
                 else:
                     raise CaseClassException("Expected CaseClass of type {} and got instead value of type {}. Value is {}".format(expected_type, type(v), v))
             else:
@@ -311,9 +352,8 @@ class CaseClass(object):
         resulting_dict = {field_name: cc_value(field_value, self.__class__.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                           for field_name, field_value in self.__dict__.iteritems()}
 
-        if not ignore_versioning:
-            ccvt = self.__class__.get_versioned_type()
-            resulting_dict['_ccvt'] = versioned_type_to_str(ccvt)
+        ccvt = self.__class__.get_versioned_type()
+        resulting_dict['_ccvt'] = versioned_type_to_str(ccvt)
         return resulting_dict
 
     @classmethod
@@ -361,45 +401,57 @@ class CaseClass(object):
     def migrate(cls, old_instance, ccvt):
         old_version = ccvt.version
         new_version = cls.CC_V
+        LOG.debug("Gonna migrate instance {} from version {} to version {}".format(old_instance, old_version, new_version))
         mp = cls.find_migration_path(new_version, old_version)
         if mp is None:
             raise CaseClassException('Could not convert case class {} to {} during read'.format(ccvt, cls.get_versioned_type()))
 
         intermediate_instance = old_instance
         for from_version, to_version in itertools.izip(mp, mp[1:]):
+            LOG.debug("-- Migrating instance of type {} from version {} to version {}".format(cls.__name__, from_version, to_version))
             vcc = find_versioned_cc(cls, CaseClassVersionedType(cls, to_version)).CC_MIGRATIONS
             migration_func = vcc[from_version]
-            intermediate_instance = migration_func(intermediate_instance)
+            try:
+                intermediate_instance = migration_func(intermediate_instance)
+            except Exception, e:
+                raise MigrationFunctionCaseClassException(intermediate_instance, from_version, to_version, e)
 
+        LOG.debug("Migrated instance {} from version {} to version {} - End result is {}".format(old_instance, old_version, new_version, intermediate_instance))
         return intermediate_instance
 
     @classmethod
-    def deversionize_dict(cls, d, ignore_versioning=False):
+    def deversionize_dict(cls, d):
         if not '_ccvt' in d:
-            ccvt = CaseClassVersionedType(cls, 1)
+            raise MissingVersionDataCaseClassException(cls.get_versioned_type())
         else:
-
             ccvt = str_to_versioned_type(cls, d['_ccvt'])
             del d['_ccvt']
 
-        if not ignore_versioning:
-            self_vt = cls.get_versioned_type()
-            if ccvt.cc_type_name != self_vt.cc_type_name:
-                raise CaseClassException('Trying to deserialize incompatible types: {} vs {}'.format(ccvt, self_vt))
+        self_vt = cls.get_versioned_type()
+        if ccvt.cc_type_name != self_vt.cc_type_name:
+            raise IncompatibleTypesCaseClassException(ccvt, self_vt)
 
-            if ccvt.version != cls.get_ccv():
-                old_version_cc = find_versioned_cc(cls, ccvt)
-                old_version_instance = cc_from_dict(d, old_version_cc, ignore_versioning=True)
-                new_version_instance = cls.migrate(old_version_instance, ccvt)
-                new_d = cc_to_dict(new_version_instance, ignore_versioning=True)
-                return new_d
-            else:
-                return d
+        if ccvt.version != cls.get_ccv():
+            LOG.debug("version {} vs {} - Gonna do a migration".format(ccvt.version, cls.get_ccv()))
+            old_version_cc = find_versioned_cc(cls, ccvt)
+            LOG.debug("old version cc {}".format(old_version_cc))
+
+            d['_ccvt'] = versioned_type_to_str(ccvt)
+            old_version_instance = cc_from_dict(d, old_version_cc)
+
+            LOG.debug("old version instance {}".format(old_version_instance))
+            new_version_instance = cls.migrate(old_version_instance, ccvt)
+            # Hack - Reconvert the new instance to a dict, and delete the top-level version info (we already know that we have the right version, we just migrated to it)
+            new_d = cc_to_dict(new_version_instance)
+            del new_d['_ccvt']
+
+            return new_d
         else:
+            LOG.debug("Instance of class {} - No need for migration".format(ccvt))
             return d
 
     @classmethod
-    def _from_dict(cls, d, ignore_versioning=False):
+    def _from_dict(cls, d):
         subtype_keys_dict = {field_name: d[field_name] for field_name, field_type in cls.CASE_CLASS_EXPECTED_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
@@ -439,7 +491,7 @@ class CaseClass(object):
                 except AttributeError:
                     raise CaseClassException('Could not find case class definition for subtype {} in module {}'.format(subtype_key, target_module))
             if issubclass(expected_type, CaseClass):
-                return expected_type._from_dict(v, ignore_versioning=ignore_versioning)
+                return expected_type._from_dict(v)
             else:
                 if isinstance(v, expected_type):
                     return v
@@ -451,7 +503,7 @@ class CaseClass(object):
 
         cls.check_expected_types_metadata()
 
-        deversionied_d = cls.deversionize_dict(d, ignore_versioning=ignore_versioning)
+        deversionied_d = cls.deversionize_dict(d)
         cls.check_data(deversionied_d)
         kwargs = {field_name: value_with_cc_support(deversionied_d[field_name], cls.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                   for field_name, field_type in deversionied_d.iteritems()}
@@ -459,12 +511,12 @@ class CaseClass(object):
         return cls(**kwargs)
 
 
-def cc_to_dict(cc, ignore_versioning=False):
+def cc_to_dict(cc):
     if isinstance(cc, list):
         return [cc_to_dict(e) for e in cc]
     if not isinstance(cc, CaseClass):
         raise CaseClassException('Must provide a case class ({})'.format(cc))
-    return cc._to_dict(ignore_versioning=ignore_versioning)
+    return cc._to_dict()
 
 
 # Experimental - One way conversion only
@@ -481,23 +533,23 @@ def dict_with_cc_to_dict(d):
         raise CaseClassException('Must provide a dict')
 
 
-def cc_to_json_str(cc, encoding='utf-8', ignore_versioning=False, **kwargs):
+def cc_to_json_str(cc, encoding='utf-8', **kwargs):
     def serialize_cc_if_needed(v):
         if isinstance(v, CaseClass):
             return cc_to_dict(v)
         else:
             return v
 
-    return json.dumps(cc_to_dict(cc, ignore_versioning=ignore_versioning), encoding=encoding, default=serialize_cc_if_needed, indent=2, **kwargs)
+    return json.dumps(cc_to_dict(cc), encoding=encoding, default=serialize_cc_if_needed, indent=2, **kwargs)
 
 
-def cc_from_json_str(s, cc_type, encoding='utf-8', ignore_versioning=False):
+def cc_from_json_str(s, cc_type, encoding='utf-8'):
     if isinstance(cc_type, CaseClass):
         raise CaseClassException('Must provide a case class type (actual type is {})'.format(type(cc_type)))
-    return cc_from_dict(json.loads(s, encoding=encoding), cc_type, ignore_versioning=ignore_versioning)
+    return cc_from_dict(json.loads(s, encoding=encoding), cc_type)
 
 
-def cc_from_dict(d, cc_type, raise_on_empty=True, ignore_versioning=False):
+def cc_from_dict(d, cc_type, raise_on_empty=True):
     if d is None:
         if raise_on_empty:
             raise CaseClassException('Could not create case class {} - Empty input'.format(cc_type))
@@ -505,7 +557,7 @@ def cc_from_dict(d, cc_type, raise_on_empty=True, ignore_versioning=False):
             return None
     if not isinstance(d, dict):
         raise CaseClassException('Must provide a dict to convert to a case class. Provided object of type {}. value {}'.format(type(d), d))
-    return cc_type._from_dict(d, ignore_versioning=ignore_versioning)
+    return cc_type._from_dict(d)
 
 
 def cc_check(o, cc_type):
