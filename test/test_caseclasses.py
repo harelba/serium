@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 from collections import OrderedDict
 
+from decimal import Decimal
 from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
-    CaseClassSubTypeValue, CaseClassTypeAsString
+    CaseClassSubTypeValue, CaseClassTypeAsString, dict_with_cc_to_dict
 from unittest import TestCase
 import json
 import pytest
@@ -326,6 +327,24 @@ class BasicTests(TestCase):
             assert deserialized_s.a_type == s.a_type
             assert deserialized_s.b_type == s.b_type
 
+    def test_dict_with_cc_to_dict(self):
+        m = {'key1': S(100, A(10, 20, 30), B('aa', 'bb')),
+             'key2': 'some value'
+             }
+        d = dict_with_cc_to_dict(m)
+        assert d == {
+            'key1': {
+                '_ccvt': 'S/1',
+                'a_type': {
+                    '_ccvt': 'A/1',
+                    'a': 10, 'b': 20, 'c': 30},
+                'b_type': {
+                    '_ccvt': 'B/1',
+                    'a': 'aa', 'b': 'bb'},
+                'myint': 100
+            },
+            'key2': 'some value'}
+
     def test_nesting_dict_serde(self):
         s1 = S(42, A(1, 2, 3), B('4', '5'))
 
@@ -481,7 +500,8 @@ class BasicTests(TestCase):
 
         json_str_in_utf8 = json.dumps(d)
         j = json.loads(json_str_in_utf8, encoding='utf-8')
-        assert j.keys() == ['my_unicode_string']
+
+        assert sorted(j.keys()) == ['_ccvt', 'my_unicode_string']
         assert type(j['my_unicode_string']) == unicode
         assert len(j['my_unicode_string']) == 11
 
@@ -576,14 +596,13 @@ class BasicTests(TestCase):
         assert [child.value for child in new_r1.children] == range(10)
         assert [len(child.children) for child in new_r1.children] == [3] * 10
 
-    def test_ignoring_extra_fields(self):
+    def test_deserialization_into_a_different_class(self):
         a1 = A(10, 20, 30)
 
         serialized_a1 = cc_to_json_str(a1)
 
         deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2)
         assert deserialized_a1_by_a2 == A2(10, 20, 30, 'my_new_field_default_value')
-
 
     def test_ignoring_extra_fields_fails_without_default_values(self):
         a1 = A(10, 20, 30)
