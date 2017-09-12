@@ -31,6 +31,12 @@ no pip install yet. Will be done soon.
 
 
 ## Basic Tutorial
+Make sure you have ipython installed on the virtualenv. To do that, run `pip install ipython` after running `source pycase-activate`.
+
+Run ipython in order to follow the tutorial and copy-paste stuff into its REPL.
+
+If you get any syntax errors inside ipython, it means that for some reason, ipython thinks you have python 3 installed...
+
 
 ```python
 #!/usr/bin/env python
