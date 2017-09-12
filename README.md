@@ -23,7 +23,12 @@ lots of stuff to do:
 ## Installation
 no pip install yet. Will be done soon. 
 
-To test it, install the dev env. See below
+## Dev envrionment
+1. Clone
+2. Run `dev/prepare-dev-env` (one time only, creates a virtualenv called pycase)
+3. Run `source pycase-activate` every time you wanna meddle with the project
+4. pycase module will be part of the venv. You can write python code that uses `from pycase... import`
+
 
 ## Basic Tutorial
 
@@ -697,9 +702,4 @@ Envelope(message_id=UUID('b9158e31-8709-4038-99eb-a9f953cb6ded'),timestamp=15000
 # which is essentially of version 2.
 ```
 
-## Dev envrionment
-1. Clone
-2. Run `dev/prepare-dev-env` (one time only, creates a virtualenv called pycase)
-3. Run `source pycase-activate` every time you wanna meddle with the project
-4. pycase module will be part of the venv. You can write python code that uses `from pycase... import`
 
