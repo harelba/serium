@@ -8,20 +8,22 @@ This is an initial attempt to provide case classes in python, which have the fol
 5. Versioned - Support automatic migration-on-read when deserializing a different version
 6. Support subtyping (e.g. a "routing" field containing the key to the structure of another field).
 7. Fields easily discoverable by the IDE
-8. Support for regular dicts as fields
+8. Support for regular dicts as fields, with native support for serialization
 
-Not production grade yet. Will be soon I hope. Please provide any feedback you think about.
+All capabilities except the the versioning are running in production. Still a lot to do in order to make it fully production-grade, though.
 
-"API" is still to be modified in terms of naming and such.
+Please provide any feedback you think of.
+
+API is still to be modified in terms of naming and such.
 
 lots of stuff to do:
-0. Make it production grade
-1. Make "API" less verbose, perhaps make use of python type hinting
+
+1. Make API less verbose, perhaps make use of python type hinting
 2. Generalize serialization to other formats
 3. IDL for case classes will be taken from a protobuf definition or similar.
 
 ## Installation
-no pip install yet. Will be done soon. 
+no pip install yet. Set up a dev env to take a test drive.
 
 ## Dev envrionment
 1. Clone
