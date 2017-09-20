@@ -1,0 +1,21 @@
+#!/bin/bash
+
+
+base_folder="$(dirname $0)"
+project_root_folder="${base_folder}/.."
+
+source `which virtualenvwrapper.sh`
+workon pycase
+
+
+if [ "x$VIRTUAL_ENV" == "x" ];
+then
+    echo "Could not go into virtual env. exiting"
+    exit 5
+fi
+
+# Remove the editable development packages from the requirements (we only wanna leave third party requirements)
+pip freeze | grep -v "^-e " | sort > requirements.txt
+
+popd
+
