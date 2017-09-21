@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+from pycase.caseclasses import *
+import time
+
+class X(CaseClass):
+  CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    ('i',int),
+    ('l',long),
+    ('b',bool),
+    ('s',str),
+    ('u',unicode),
+    ('f',float)
+  ])
+
+  def __init__(self,i,l,b,s,u,f):
+    self.i = i
+    self.l = l
+    self.b = b
+    self.s = s
+    self.u = u
+    self.f = f
+
+
+def run(COUNT):
+    for i in range(0,COUNT):
+        x = X(100,200L,True,'blah',u'blah',12.3)
+        s = cc_to_json_str(x)
+        x2 = cc_from_json_str(s,X)
+
+t1 = time.time()
+
+COUNT = 10000
+
+if len(sys.argv) > 1 and sys.argv[1] == '-p':
+    import cProfile
+    cProfile.run('run(%s)' % COUNT)
+else:
+    run(COUNT)
+
+t2 = time.time()
+
+print "ms per Serde: %4.6f" % ((t2-t1)/COUNT*1000)

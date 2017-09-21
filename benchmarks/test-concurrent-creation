@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import threading
+import uuid
+import random
+from pycase.caseclasses import CaseClass,CaseClassTypeAsString
+from collections import OrderedDict
+
+class CaseClass1(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+        ('x',int),
+        ('y',int),
+        ('z',CaseClassTypeAsString(uuid.UUID)),
+        ('a',long),
+        ('b',long)
+    ])
+    
+    def __init__(self,x,y,z,a,b):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.a = a
+        self.b = b
+
+class X(threading.Thread):
+  daemon = True
+
+  def __init__(self,i):
+    super(X,self).__init__()
+    self.i = i
+    self.done = False
+
+  def run(self):
+    for iii in range(1000):
+      if iii % 200 == 0:
+        print "Done {} for thread {}".format(iii,self.i)
+      if self.done:
+        break
+      x = random.randint(0,1000000)
+      y = random.randint(0,1000000)
+      z = uuid.uuid4()
+      a = long(random.randint(0,1000000))
+      b = long(random.randint(0,1000000))
+      cc = CaseClass1(x,y,z,a,b)
+      assert cc.x == x
+      assert cc.y == y
+      assert cc.z == z
+      assert cc.a == a
+      assert cc.b == b
+    print "Done thread {}".format(self.i)
+      
+
+
+n = 100
+
+l = []
+for i in range(n):
+    l.append(X(i))
+
+for t in l:
+    t.start()
+
+v = raw_input()
+
+for t in l:
+    t.done = True
+
+for t in l:
+    t.join()

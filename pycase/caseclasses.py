@@ -119,6 +119,7 @@ class FrozenCaseClassMetaClass(type):
                     raise CaseClassException("'" + name + "' not an attribute of " + clsname + " object. and can't update after creation anyway")
                 raise CaseClassException("Caseclass is immutable - cannot update after creation. Use copy() to create a modified instance {}. field name {} field value {}".format(self,name,repr(value)))
 
+        # TODO Optimize this method - Removing this makes serde 40% faster
         def check_parameter_types(expected_types, args, kwargs):
             if expected_types is None:
                 raise CaseClassException('CASE_CLASS_EXPECTED_TYPES must be defined on case class {}'.format(cls))
