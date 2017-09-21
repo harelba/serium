@@ -440,7 +440,7 @@ class BasicTests(TestCase):
                 }
             }
         """
-        s = cc_from_json_str(json_str, S)
+        s = cc_from_json_str(json_str, S,fail_on_unversioned_data=False)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_deserialization_from_standard_json_as_unicode(self):
@@ -458,7 +458,7 @@ class BasicTests(TestCase):
                 }
             }
         """
-        s = cc_from_json_str(json_str, S)
+        s = cc_from_json_str(json_str, S,fail_on_unversioned_data=False)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_deserialization_from_manually_deserialized_json(self):
@@ -477,7 +477,7 @@ class BasicTests(TestCase):
             }
         """
         d = json.loads(json_str)
-        s = cc_from_dict(d, S)
+        s = cc_from_dict(d, S, fail_on_unversioned_data=False)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_unicode_serde(self):
@@ -601,7 +601,7 @@ class BasicTests(TestCase):
 
         serialized_a1 = cc_to_json_str(a1)
 
-        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2)
+        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2, fail_on_incompatible_types=False)
         assert deserialized_a1_by_a2 == A2(10, 20, 30, 'my_new_field_default_value')
 
     def test_ignoring_extra_fields_fails_without_default_values(self):
@@ -632,7 +632,7 @@ class BasicTests(TestCase):
     def test_cc_type_as_string__deserialization_succeeds(self):
         j = """{ "u" : "cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd" }"""
 
-        new_u = cc_from_json_str(j, CaseClassWithUUID)
+        new_u = cc_from_json_str(j, CaseClassWithUUID,fail_on_unversioned_data=False)
 
         assert new_u == CaseClassWithUUID(uuid.UUID('cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd'))
 
@@ -694,7 +694,7 @@ class SubTypingTests(TestCase):
             }
         }
 
-        st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        st = cc_from_json_str(json.dumps(j), CaseClassSuperType, fail_on_unversioned_data=False)
         assert st == CaseClassSuperType("CaseClassSubType2", CaseClassSubType2(100, 200))
 
     def test_deserialization_of_known_but_wrong_subtype(self):

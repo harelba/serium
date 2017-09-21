@@ -4,7 +4,7 @@ from collections import OrderedDict
 from unittest import TestCase
 
 from pycase.caseclasses import CaseClass, cc_to_dict, cc_from_dict, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, cc_to_json_str, cc_from_json_str, CaseClassListType, \
-    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException
+    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException
 
 
 class MyClass(CaseClass):
@@ -509,7 +509,7 @@ class CCVTSelfTypeTests(TestCase):
                 ]
             }
         """
-        with self.assertRaises(VersionNotFoundCaseClassException):
+        with self.assertRaises(MigrationPathNotFoundCaseClassException):
             t2 = cc_from_json_str(s, MyTreeNode)
 
 
