@@ -4,7 +4,9 @@ from collections import OrderedDict
 from unittest import TestCase
 
 from pycase.caseclasses import CaseClass, cc_to_dict, cc_from_dict, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, cc_to_json_str, cc_from_json_str, CaseClassListType, \
-    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException
+    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException, default_to_version_1_func, \
+    CaseClassVersionedType
+import json
 
 
 class MyClass(CaseClass):
@@ -19,7 +21,6 @@ class MyClass(CaseClass):
 def test_serialization():
     a = MyClass(100, 'str1')
     s = cc_to_dict(a)
-    print s
     assert s['x'] == 100
     assert s['y'] == 'str1'
     assert s['_ccvt'] == 'MyClass/5'
@@ -46,7 +47,6 @@ class CCVTTests(TestCase):
     def test_nested_serialization(self):
         p = ParentClass(42, MyClass(100, 'mystr'))
         d = cc_to_dict(p)
-        print d
         assert d['some_int'] == 42
         assert d['_ccvt'] == 'ParentClass/7'
         assert d['nested']['x'] == 100
@@ -234,7 +234,7 @@ class CCVTMigrationOnRead(TestCase):
 
         with self.assertRaises(MissingVersionDataCaseClassException) as cm:
             a_v3 = cc_from_json_str(ser_a, A)
-        print str(cm.exception.ccvt) == 'A/3'
+        assert str(cm.exception.ccvt) == 'A/3'
 
 
 class B(CaseClass):
@@ -269,6 +269,36 @@ class C(CaseClass):
         self.my_b = my_b
 
 
+class T__v1(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int)])
+    CC_V = 1
+
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+
+class T(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('s1', str), ('s2', str)])
+    CC_V = 2
+    CC_MIGRATIONS = {
+        1: lambda old: T('a was %d' % old.a, 'b was %d' % old.b)
+    }
+
+    def __init__(self, s1, s2):
+        self.s1 = s1
+        self.s2 = s2
+
+
+class TTag(CaseClass):
+    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int)])
+    CC_V = 1
+
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+
 class CCVTNestedMigrationOnReadTests(TestCase):
     def test_serde(self):
         b = B(300, A(12L, 500L))
@@ -298,9 +328,7 @@ class CCVTNestedMigrationOnReadTests(TestCase):
         c = C__v1(1000, A(500L, 30L))
 
         s = cc_to_json_str(c)
-        print s
         deserialized_c = cc_from_json_str(s, C)
-        print deserialized_c
 
         assert deserialized_c == C(1000, B(500, A(500L, 30L)))
 
@@ -308,9 +336,7 @@ class CCVTNestedMigrationOnReadTests(TestCase):
         c = C__v1(1000, A__v1(500, 30L))
 
         s = cc_to_json_str(c)
-        print s
         deserialized_c = cc_from_json_str(s, C)
-        print deserialized_c
 
         assert deserialized_c == C(1000, B(500, A(500L, 60L)))
 
@@ -318,11 +344,98 @@ class CCVTNestedMigrationOnReadTests(TestCase):
         c = C__v1(1000, A__v1(500, 30L))
 
         s = cc_to_json_str(c)
-        print s
         deserialized_c = cc_from_json_str(s, C__v1)
-        print deserialized_c
 
         assert deserialized_c == C__v1(1000, A(500L, 60L))
+
+    def test_force_unversioned_serialization(self):
+        c = C__v1(1000, A__v1(500, 30L))
+        d = cc_to_dict(c, force_unversioned_serialization=True)
+
+        assert sorted(d.keys()) == ['my_a', 'val1']
+        assert d['val1'] == 1000
+        assert sorted(d['my_a'].keys()) == ['x', 'y']
+        assert d['my_a']['x'] == 500
+        assert d['my_a']['y'] == 30L
+
+    def test_initial_versioning_logic(self):
+        s = """
+        {
+          "val1": 98,
+          "my_a": {
+            "y": 30,
+            "x": 80
+          }
+        }"""
+
+        c = cc_from_json_str(s, C, fail_on_unversioned_data=False, external_version_provider_func=default_to_version_1_func)
+
+        assert c == C(val1=98, my_b=B(500, A(80L, 30 * 2L)))
+
+        s2 = cc_to_json_str(c)
+        d2 = json.loads(s2)
+
+        assert sorted(d2.keys()) == ['_ccvt', 'my_b', 'val1']
+        assert d2['_ccvt'] == 'C/2'
+        assert d2['my_b']['_ccvt'] == 'B/1'
+        assert d2['my_b']['my_a']['_ccvt'] == 'A/3'
+
+    def test_externally_provided_non_existent_version(self):
+        def force_version_100(cc_type, d):
+            return 100
+
+        s1 = """{ "a" : 111, "b": 222 }"""
+
+        with self.assertRaises(VersionNotFoundCaseClassException) as e1:
+            t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_100)
+        assert str(e1.exception.ccvt) == 'T/100'
+
+    def test_externally_provided_version__with_static_version_class(self):
+        def force_version_1(cc_type, d):
+            return 1
+
+        s1 = """{ "a" : 111, "b": 222 }"""
+
+        t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_1)
+        assert t1 == T__v1(111, 222)
+
+    def test_externally_provided_ccvt__with_static_version_class(self):
+        def force_version_1(cc_type, d):
+            return CaseClassVersionedType(cc_type, 1)
+
+        s1 = """{ "a" : 111, "b": 222 }"""
+
+        t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_1)
+        assert t1 == T__v1(111, 222)
+
+    def test_externally_provided_version__with_static_version_class_that_is_the_current_one(self):
+        def force_version_2(cc_type, d):
+            return 2
+
+        s1 = """{ "s1" : "blah 1", "s2": "blah 2" }"""
+
+        t1 = cc_from_json_str(s1, T, external_version_provider_func=force_version_2)
+        assert t1 == T("blah 1", "blah 2")
+
+    def test_externally_provided_version__with_auto_migration(self):
+        def force_version_1(cc_type, d):
+            return 1
+
+        s1 = """{ "a" : 111, "b": 222 }"""
+
+        t1 = cc_from_json_str(s1, T, external_version_provider_func=force_version_1)
+        assert t1 == T('a was 111', 'b was 222')
+
+    def test_externally_provided_version__that_returned_different_class(self):
+        def force_ttag(cc_type, d):
+            return CaseClassVersionedType(TTag, 5)
+
+        s1 = """{ "a" : 111, "b": 222 }"""
+
+        with self.assertRaises(IncompatibleTypesCaseClassException) as e:
+            t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_ttag)
+        assert str(e.exception.ccvt) == 'TTag/5'
+        assert str(e.exception.self_vt) == 'T/1'
 
 
 class MyCaseClassWithList(CaseClass):
@@ -386,7 +499,6 @@ class CCVTSubTypeTests(TestCase):
         c = SuperType(1000, "SubType", SubType(200, 300))
 
         d = cc_to_dict(c)
-        print d
         assert d['_ccvt'] == 'SuperType/1'
         assert d['super_value'] == 1000
         assert d['request_type'] == SubType.__name__
@@ -469,7 +581,6 @@ class CCVTSelfTypeTests(TestCase):
         t1 = MyTreeNode(1, 'name1', children)
 
         s = cc_to_json_str(t1)
-        print s
         t2 = cc_from_json_str(s, MyTreeNode)
 
         assert t1 == t2
