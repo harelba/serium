@@ -576,6 +576,18 @@ class CaseClass(object):
         return cls(**kwargs)
 
 
+class CaseClassJsonSerialization(object):
+    def __init__(self, encoding='utf-8', indent=2):
+        self.encoding = encoding
+        self.indent = indent
+
+    def serialize(self, d, **kwargs):
+        return json.dumps(d, encoding=self.encoding, indent=self.indent, **kwargs)
+
+    def deserialize(self, s):
+        return json.loads(s,encoding=self.encoding)
+
+
 def cc_to_dict(cc, force_unversioned_serialization=False):
     if isinstance(cc, list):
         return [cc_to_dict(e, force_unversioned_serialization=force_unversioned_serialization) for e in cc]
@@ -598,24 +610,20 @@ def dict_with_cc_to_dict(d):
         raise CaseClassException('Must provide a dict')
 
 
-def cc_to_json_str(cc, encoding='utf-8', force_unversioned_serialization=False, **kwargs):
-    def serialize_cc_if_needed(v):
-        if isinstance(v, CaseClass):
-            return cc_to_dict(v, force_unversioned_serialization=force_unversioned_serialization)
-        else:
-            return v
-
-    return json.dumps(cc_to_dict(cc, force_unversioned_serialization=force_unversioned_serialization), encoding=encoding, default=serialize_cc_if_needed, indent=2, **kwargs)
+def cc_to_json_str(cc, force_unversioned_serialization=False, **kwargs):
+    d = cc_to_dict(cc, force_unversioned_serialization=force_unversioned_serialization)
+    return CaseClassJsonSerialization().serialize(d, **kwargs)
 
 
 def default_to_version_1_func(cc_type, d):
     return 1
 
 
-def cc_from_json_str(s, cc_type, encoding='utf-8', fail_on_unversioned_data=True, fail_on_incompatible_types=True, external_version_provider_func=None):
+def cc_from_json_str(s, cc_type, fail_on_unversioned_data=True, fail_on_incompatible_types=True, external_version_provider_func=None):
     if isinstance(cc_type, CaseClass):
         raise CaseClassException('Must provide a case class type (actual type is {})'.format(type(cc_type)))
-    return cc_from_dict(json.loads(s, encoding=encoding), cc_type,
+    d = CaseClassJsonSerialization().deserialize(s)
+    return cc_from_dict(d, cc_type,
                         fail_on_unversioned_data=fail_on_unversioned_data,
                         fail_on_incompatible_types=fail_on_incompatible_types,
                         external_version_provider_func=external_version_provider_func)
