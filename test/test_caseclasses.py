@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-from collections import OrderedDict
-
-from decimal import Decimal
-from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
-    CaseClassSubTypeValue, CaseClassTypeAsString, dict_with_cc_to_dict
-from unittest import TestCase
 import json
-import pytest
 import uuid
+from collections import OrderedDict
+from unittest import TestCase
+
+from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
+    CaseClassSubTypeValue, CaseClassTypeAsString, dict_with_cc_to_dict, cc_set_default_env, CaseClassDeserializationContext, CaseClassSerializationContext
 
 
 class A(CaseClass):
@@ -426,6 +424,8 @@ class BasicTests(TestCase):
         assert deserialized.mydict['b'] == B('w', 'e')
 
     def test_deserialization_from_standard_json(self):
+        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+
         json_str = """
             {
                 "myint" : 100,
@@ -440,10 +440,12 @@ class BasicTests(TestCase):
                 }
             }
         """
-        s = cc_from_json_str(json_str, S,fail_on_unversioned_data=False)
+        s = cc_from_json_str(json_str, S)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_deserialization_from_standard_json_as_unicode(self):
+        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+
         json_str = u"""
             {
                 "myint" : 100,
@@ -458,10 +460,12 @@ class BasicTests(TestCase):
                 }
             }
         """
-        s = cc_from_json_str(json_str, S,fail_on_unversioned_data=False)
+        s = cc_from_json_str(json_str, S)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_deserialization_from_manually_deserialized_json(self):
+        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+
         json_str = """
             {
                 "myint" : 100,
@@ -477,7 +481,7 @@ class BasicTests(TestCase):
             }
         """
         d = json.loads(json_str)
-        s = cc_from_dict(d, S, fail_on_unversioned_data=False)
+        s = cc_from_dict(d, S)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_unicode_serde(self):
@@ -597,11 +601,13 @@ class BasicTests(TestCase):
         assert [len(child.children) for child in new_r1.children] == [3] * 10
 
     def test_deserialization_into_a_different_class(self):
+        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_incompatible_types=False))
+
         a1 = A(10, 20, 30)
 
         serialized_a1 = cc_to_json_str(a1)
 
-        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2, fail_on_incompatible_types=False)
+        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2)
         assert deserialized_a1_by_a2 == A2(10, 20, 30, 'my_new_field_default_value')
 
     def test_ignoring_extra_fields_fails_without_default_values(self):
@@ -630,9 +636,11 @@ class BasicTests(TestCase):
             new_u = cc_from_json_str(j, CaseClassWithUUID)
 
     def test_cc_type_as_string__deserialization_succeeds(self):
+        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_incompatible_types=False))
+
         j = """{ "u" : "cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd" }"""
 
-        new_u = cc_from_json_str(j, CaseClassWithUUID,fail_on_unversioned_data=False)
+        new_u = cc_from_json_str(j, CaseClassWithUUID)
 
         assert new_u == CaseClassWithUUID(uuid.UUID('cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd'))
 
@@ -686,6 +694,8 @@ class SubTypingTests(TestCase):
             supertype = CaseClassSuperType('UnknownSubType', CaseClassSubType1(1000, 2000))
 
     def test_deserialization_of_known_subtype(self):
+        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+
         j = {
             "submessage_type": "CaseClassSubType2",
             "details": {
@@ -694,7 +704,7 @@ class SubTypingTests(TestCase):
             }
         }
 
-        st = cc_from_json_str(json.dumps(j), CaseClassSuperType, fail_on_unversioned_data=False)
+        st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
         assert st == CaseClassSuperType("CaseClassSubType2", CaseClassSubType2(100, 200))
 
     def test_deserialization_of_known_but_wrong_subtype(self):
