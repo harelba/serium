@@ -4,6 +4,9 @@ import uuid
 from collections import OrderedDict
 import pytest
 
+import sys,os
+sys.path.insert(0, os.path.join(sys.path[0], '..'))
+
 from serium.caseclasses import CaseClass, CaseClassException, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
     CaseClassSubTypeValue, CaseClassTypeAsString, CaseClassDeserializationContext, create_default_env
 
