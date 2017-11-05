@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import pytest
 
-from pycase.caseclasses import CaseClass, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, CaseClassListType, \
+from serium.caseclasses import CaseClass, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, CaseClassListType, \
     CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException, default_to_version_1_func, \
     CaseClassVersionedType, create_default_env, CaseClassSerializationContext, CaseClassDeserializationContext
 

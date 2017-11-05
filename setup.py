@@ -6,20 +6,21 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-long_description = "This project is an attempt to provide fully typed nestable case classes with json serialization built in"
+description = 'Sustainable case-class serialization library'
+long_description = "A serialization library that provides resiliency to data structure evolution"
 
 setup(
-    name='pycase',
+    name='serium',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
     version='0.1.0',
 
-    description='An attempt on serializable typed case classes in python',
+    description=description,
     long_description=long_description,
 
-    url='https://github.com/harelba/pycase',
+    url='https://github.com/harelba/serium',
 
     author='Harel Ben-Attia',
     author_email='harelba@gmail.com',
@@ -38,7 +39,7 @@ setup(
         'Programming Language :: Python :: 2.7'
     ],
 
-    keywords='pycase case-classes json datastructures strict-typing',
+    keywords='serium case-classes serialization data-migration data-structures strict-typing',
 
     packages=find_packages(exclude=['contrib', 'docs', 'test']),
 

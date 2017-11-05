@@ -7,14 +7,14 @@ then
 fi
 
 source /usr/local/bin/virtualenvwrapper.sh
-workon pycase 2>/dev/null
+workon serium 2>/dev/null
 
 
 if [ "x$VIRTUAL_ENV" == "x" ];
 then
         echo "Could not go into virtual env. exiting. Make sure that you've run ./dev/prepare-dev-machine so that the virtualenv exists"
 else
-        echo "Activating pycase virtual env"
+        echo "Activating serium virtual env"
         pip install -r ./requirements.txt
 
         ./setup.py develop

@@ -5,7 +5,7 @@ import sys
 from collections import OrderedDict
 import logging
 
-LOG = logging.getLogger('pycase')
+LOG = logging.getLogger('serium')
 
 
 class CaseClassException(StandardError):

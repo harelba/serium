@@ -4,12 +4,8 @@ import uuid
 from collections import OrderedDict
 import pytest
 
-from pycase.caseclasses import CaseClass, CaseClassException, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
+from serium.caseclasses import CaseClass, CaseClassException, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
     CaseClassSubTypeValue, CaseClassTypeAsString, CaseClassDeserializationContext, create_default_env
-
-
-# from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
-#     CaseClassSubTypeValue, CaseClassTypeAsString, dict_with_cc_to_dict, cc_set_default_env, CaseClassDeserializationContext, create_default_env
 
 
 class A(CaseClass):
