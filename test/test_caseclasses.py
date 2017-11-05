@@ -2,10 +2,14 @@
 import json
 import uuid
 from collections import OrderedDict
-from unittest import TestCase
+import pytest
 
-from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
-    CaseClassSubTypeValue, CaseClassTypeAsString, dict_with_cc_to_dict, cc_set_default_env, CaseClassDeserializationContext, CaseClassSerializationContext
+from pycase.caseclasses import CaseClass, CaseClassException, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
+    CaseClassSubTypeValue, CaseClassTypeAsString, CaseClassDeserializationContext, create_default_env
+
+
+# from pycase.caseclasses import CaseClass, CaseClassException, cc_to_dict, cc_from_dict, cc_to_json_str, cc_from_json_str, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
+#     CaseClassSubTypeValue, CaseClassTypeAsString, dict_with_cc_to_dict, cc_set_default_env, CaseClassDeserializationContext, create_default_env
 
 
 class A(CaseClass):
@@ -139,7 +143,12 @@ class CaseClassWithUUID(CaseClass):
         self.u = u
 
 
-class BasicTests(TestCase):
+@pytest.fixture
+def env(request):
+    return create_default_env()
+
+
+class TestBasicTests:
     def test_args_creation(self):
         a = A(10, 20, 30)
         assert a.a == 10
@@ -166,16 +175,16 @@ class BasicTests(TestCase):
 
     def test_cannot_update_value(self):
         a = A(100, 200, 300)
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             a.a = 500
 
     def test_cannot_access_undefined_value(self):
         a = A(100, 200, 300)
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             myvalue = a.unknown_field
 
     def test_missing_expected_types(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             a = CaseClassWithoutExpectedTypes(100, 200)
 
     def test_equality(self):
@@ -229,11 +238,11 @@ class BasicTests(TestCase):
         assert m[c] == 300
 
     def test_exception_on_wrong_native_type(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             s = S('a', A(1, 2, 3), B('4', '5'))
 
     def test_exception_on_wrong_cc_type(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             s = S(42, B('4', '5'), B('4', '5'))
 
     def test_nested_hash_identical(self):
@@ -271,23 +280,23 @@ class BasicTests(TestCase):
         assert s.a_type.c == 3
         assert s.b_type == B('4', '5')
 
-    def test_dict_serde(self):
-        d = cc_to_dict(B('4', '5'))
-        r = cc_from_dict(d, B)
+    def test_dict_serde(self, env):
+        d = env.cc_to_dict(B('4', '5'))
+        r = env.cc_from_dict(d, B)
         assert r == B('4', '5')
         assert r.a == '4'
         assert r.b == '5'
 
-    def test_dict_serde_with_null(self):
-        d = cc_to_dict(B('4', None))
-        r = cc_from_dict(d, B)
+    def test_dict_serde_with_null(self, env):
+        d = env.cc_to_dict(B('4', None))
+        r = env.cc_from_dict(d, B)
         assert r == B('4', None)
         assert r.a == '4'
         assert r.b is None
 
-    def test_dict_serde_all_native_types(self):
-        d1 = cc_to_dict(AllNativeTypes(True, 42, -12.5, 'mystring', 12121212L))
-        r1 = cc_from_dict(d1, AllNativeTypes)
+    def test_dict_serde_all_native_types(self, env):
+        d1 = env.cc_to_dict(AllNativeTypes(True, 42, -12.5, 'mystring', 12121212L))
+        r1 = env.cc_from_dict(d1, AllNativeTypes)
         assert r1 == AllNativeTypes(True, 42, -12.5, 'mystring', 12121212L)
         assert r1.b == True
         assert r1.i == 42
@@ -295,9 +304,9 @@ class BasicTests(TestCase):
         assert r1.s == 'mystring'
         assert r1.l == 12121212L
 
-    def test_dict_serde_all_native_types_as_nulls(self):
-        d1 = cc_to_dict(AllNativeTypes(None, None, None, None, None))
-        r1 = cc_from_dict(d1, AllNativeTypes)
+    def test_dict_serde_all_native_types_as_nulls(self, env):
+        d1 = env.cc_to_dict(AllNativeTypes(None, None, None, None, None))
+        r1 = env.cc_from_dict(d1, AllNativeTypes)
         assert r1 == AllNativeTypes(None, None, None, None, None)
         assert r1.b is None
         assert r1.i is None
@@ -305,11 +314,12 @@ class BasicTests(TestCase):
         assert r1.s is None
         assert r1.l is None
 
-    def test_dict_serde_lists(self):
+    def test_dict_serde_lists(self, env):
+
         Ss = [S(i, A(10, 20, 30), B('aa', 'bb')) for i in range(10)]
         cc = CaseClassWithLists(42, [1000, 2000, 3000], Ss)
-        d = cc_to_dict(cc)
-        r1 = cc_from_dict(d, CaseClassWithLists)
+        d = env.cc_to_dict(cc)
+        r1 = env.cc_from_dict(d, CaseClassWithLists)
         assert r1 == cc
         assert r1.myint == 42
         assert type(r1.list_of_ints) == list
@@ -325,11 +335,11 @@ class BasicTests(TestCase):
             assert deserialized_s.a_type == s.a_type
             assert deserialized_s.b_type == s.b_type
 
-    def test_dict_with_cc_to_dict(self):
+    def test_dict_with_cc_to_dict(self, env):
         m = {'key1': S(100, A(10, 20, 30), B('aa', 'bb')),
              'key2': 'some value'
              }
-        d = dict_with_cc_to_dict(m)
+        d = env.dict_with_cc_to_dict(m)
         assert d == {
             'key1': {
                 '_ccvt': 'S/1',
@@ -343,22 +353,22 @@ class BasicTests(TestCase):
             },
             'key2': 'some value'}
 
-    def test_nesting_dict_serde(self):
+    def test_nesting_dict_serde(self, env):
         s1 = S(42, A(1, 2, 3), B('4', '5'))
 
-        d1 = cc_to_dict(s1)
-        s2 = cc_from_dict(d1, S)
+        d1 = env.cc_to_dict(s1)
+        s2 = env.cc_from_dict(d1, S)
 
         assert s1 == s2
         assert s1.myint == s2.myint
         assert s1.a_type == s2.a_type
         assert s1.b_type == s2.b_type
 
-    def test_nesting_dict_serde_with_nulls(self):
+    def test_nesting_dict_serde_with_nulls(self, env):
         s1 = S(42, A(1, 2, 3), B('4', None))
 
-        d1 = cc_to_dict(s1)
-        s2 = cc_from_dict(d1, S)
+        d1 = env.cc_to_dict(s1)
+        s2 = env.cc_from_dict(d1, S)
 
         assert s1 == s2
         assert s1.myint == s2.myint
@@ -367,22 +377,22 @@ class BasicTests(TestCase):
 
         assert s2.b_type.b is None
 
-    def test_nesting_json_serde(self):
+    def test_nesting_json_serde(self, env):
         s1 = S(42, A(1, 2, 3), B('4', '5'))
 
-        j = cc_to_json_str(s1)
-        s2 = cc_from_json_str(j, S)
+        j = env.cc_to_json_str(s1)
+        s2 = env.cc_from_json_str(j, S)
 
         assert s1 == s2
         assert s1.myint == s2.myint
         assert s1.a_type == s2.a_type
         assert s1.b_type == s2.b_type
 
-    def test_nesting_json_serde_with_nulls(self):
+    def test_nesting_json_serde_with_nulls(self, env):
         s1 = S(42, A(1, 2, None), B('4', None))
 
-        j = cc_to_json_str(s1)
-        s2 = cc_from_json_str(j, S)
+        j = env.cc_to_json_str(s1)
+        s2 = env.cc_from_json_str(j, S)
 
         assert s1 == s2
         assert s1.myint == s2.myint
@@ -392,30 +402,30 @@ class BasicTests(TestCase):
         assert s2.a_type.c is None
         assert s2.b_type.b is None
 
-    def test_json_serde_with_dict_field(self):
+    def test_json_serde_with_dict_field(self, env):
         c = CaseClassWithDict(42, {"a": B('Z', 'X'), "b": B('Z', 'Y')})
-        j = cc_to_json_str(c)
-        deserialized = cc_from_json_str(j, CaseClassWithDict)
+        j = env.cc_to_json_str(c)
+        deserialized = env.cc_from_json_str(j, CaseClassWithDict)
         assert deserialized == c
         assert deserialized.myint == 42
         assert sorted(deserialized.mydict.keys()) == ['a', 'b']
         assert deserialized.mydict['a'] == B('Z', 'X')
         assert deserialized.mydict['b'] == B('Z', 'Y')
 
-    def test_json_serde_with_dict_field_containing_null_values(self):
+    def test_json_serde_with_dict_field_containing_null_values(self, env):
         c = CaseClassWithDict(42, {"a": B('Z', 'X'), "b": None})
-        j = cc_to_json_str(c)
-        deserialized = cc_from_json_str(j, CaseClassWithDict)
+        j = env.cc_to_json_str(c)
+        deserialized = env.cc_from_json_str(j, CaseClassWithDict)
         assert deserialized == c
         assert deserialized.myint == 42
         assert sorted(deserialized.mydict.keys()) == ['a', 'b']
         assert deserialized.mydict['a'] == B('Z', 'X')
         assert deserialized.mydict['b'] is None
 
-    def test_json_serde_with_dict_field_with_cc(self):
+    def test_json_serde_with_dict_field_with_cc(self, env):
         c = CaseClassWithDict(42, {"a": B('q', 'w'), "b": B('w', 'e')})
-        j = cc_to_json_str(c)
-        deserialized = cc_from_json_str(j, CaseClassWithDict)
+        j = env.cc_to_json_str(c)
+        deserialized = env.cc_from_json_str(j, CaseClassWithDict)
 
         assert deserialized == c
         assert deserialized.myint == 42
@@ -424,7 +434,8 @@ class BasicTests(TestCase):
         assert deserialized.mydict['b'] == B('w', 'e')
 
     def test_deserialization_from_standard_json(self):
-        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+        env = create_default_env()
+        env.deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False)
 
         json_str = """
             {
@@ -440,11 +451,12 @@ class BasicTests(TestCase):
                 }
             }
         """
-        s = cc_from_json_str(json_str, S)
+        s = env.cc_from_json_str(json_str, S)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_deserialization_from_standard_json_as_unicode(self):
-        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(fail_on_unversioned_data=False)
 
         json_str = u"""
             {
@@ -460,11 +472,12 @@ class BasicTests(TestCase):
                 }
             }
         """
-        s = cc_from_json_str(json_str, S)
+        s = env.cc_from_json_str(json_str, S)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
     def test_deserialization_from_manually_deserialized_json(self):
-        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(fail_on_unversioned_data=False)
 
         json_str = """
             {
@@ -481,13 +494,13 @@ class BasicTests(TestCase):
             }
         """
         d = json.loads(json_str)
-        s = cc_from_dict(d, S)
+        s = env.cc_from_dict(d, S)
         assert s == S(100, A(200, 300, 400), B('str1', 'str2'))
 
-    def test_unicode_serde(self):
+    def test_unicode_serde(self, env):
         u = U(u'ASCII\xe0\xe8\xec\xf2\xf9\xa4')
 
-        new_u = cc_from_json_str(cc_to_json_str(u), U)
+        new_u = env.cc_from_json_str(env.cc_to_json_str(u), U)
 
         assert new_u == u
         assert type(new_u.my_unicode_string) == unicode
@@ -495,10 +508,10 @@ class BasicTests(TestCase):
         assert len(new_u.my_unicode_string) == len(u.my_unicode_string)
         assert len(new_u.my_unicode_string) == 11
 
-    def test_unicode_serialization(self):
+    def test_unicode_serialization(self, env):
         u = U(u'ASCII\xe0\xe8\xec\xf2\xf9\xa4')
 
-        d = cc_to_dict(u)
+        d = env.cc_to_dict(u)
         assert type(d['my_unicode_string']) == unicode
         assert d['my_unicode_string'] == u'ASCII\xe0\xe8\xec\xf2\xf9\xa4'
 
@@ -542,7 +555,7 @@ class BasicTests(TestCase):
         assert a2.c == 3
 
     def test_copy_with_unknown_params_raises(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             a1 = A(1, 2, 3)
             a2 = a1.copy(d=100)
 
@@ -564,13 +577,13 @@ class BasicTests(TestCase):
         assert s2.a_type == A(1, 2, 300)
         assert s2.b_type == B('a', 'b')
 
-    def test_copy_with_serde(self):
+    def test_copy_with_serde(self, env):
         s1 = S(100, A(1, 2, 3), B('a', 'b'))
 
         s2 = s1.copy(a_type=s1.a_type.copy(c=300))
 
-        new_s1 = cc_from_json_str(cc_to_json_str(s1), S)
-        new_s2 = cc_from_json_str(cc_to_json_str(s2), S)
+        new_s1 = env.cc_from_json_str(env.cc_to_json_str(s1), S)
+        new_s2 = env.cc_from_json_str(env.cc_to_json_str(s2), S)
 
         assert new_s1.myint == new_s2.myint
         assert new_s1.a_type == A(1, 2, 3)
@@ -579,20 +592,20 @@ class BasicTests(TestCase):
         assert new_s2.b_type == s2.b_type
         assert new_s2.b_type == B('a', 'b')
 
-    def test_recursive_type(self):
+    def test_recursive_type(self, env):
         child = CaseClassWithRecursiveReference(20, 'child', None)
         r1 = CaseClassWithRecursiveReference(10, 'parent', child)
 
-        new_r1 = cc_from_json_str(cc_to_json_str(r1), CaseClassWithRecursiveReference)
+        new_r1 = env.cc_from_json_str(env.cc_to_json_str(r1), CaseClassWithRecursiveReference)
 
         assert new_r1 == r1
 
-    def test_recursive_type_in_list(self):
+    def test_recursive_type_in_list(self, env):
         leaves = [CaseClassWithRecursiveRefInList(-5, None) for _ in range(3)]
         children = [CaseClassWithRecursiveRefInList(i, leaves) for i in range(10)]
         r1 = CaseClassWithRecursiveRefInList(42000, children)
 
-        new_r1 = cc_from_json_str(cc_to_json_str(r1), CaseClassWithRecursiveRefInList)
+        new_r1 = env.cc_from_json_str(env.cc_to_json_str(r1), CaseClassWithRecursiveRefInList)
 
         assert new_r1 == r1
         assert new_r1.value == 42000
@@ -601,46 +614,48 @@ class BasicTests(TestCase):
         assert [len(child.children) for child in new_r1.children] == [3] * 10
 
     def test_deserialization_into_a_different_class(self):
-        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_incompatible_types=False))
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(fail_on_incompatible_types=False)
 
         a1 = A(10, 20, 30)
 
-        serialized_a1 = cc_to_json_str(a1)
+        serialized_a1 = env.cc_to_json_str(a1)
 
-        deserialized_a1_by_a2 = cc_from_json_str(serialized_a1, A2)
+        deserialized_a1_by_a2 = env.cc_from_json_str(serialized_a1, A2)
         assert deserialized_a1_by_a2 == A2(10, 20, 30, 'my_new_field_default_value')
 
-    def test_ignoring_extra_fields_fails_without_default_values(self):
+    def test_ignoring_extra_fields_fails_without_default_values(self, env):
         a1 = A(10, 20, 30)
 
-        serialized_a1 = cc_to_json_str(a1)
+        serialized_a1 = env.cc_to_json_str(a1)
 
-        with self.assertRaises(CaseClassException):
-            deserialized_a1_by_a3 = cc_from_json_str(serialized_a1, A3)
+        with pytest.raises(CaseClassException):
+            deserialized_a1_by_a3 = env.cc_from_json_str(serialized_a1, A3)
 
-    def test_cc_type_as_string(self):
+    def test_cc_type_as_string(self, env):
         u = CaseClassWithUUID(uuid.uuid4())
 
-        new_u = cc_from_json_str(cc_to_json_str(u), CaseClassWithUUID)
+        new_u = env.cc_from_json_str(env.cc_to_json_str(u), CaseClassWithUUID)
 
         assert new_u == u
 
     def test_cc_type_as_string__type_check_fails(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             u = CaseClassWithUUID('1212121')
 
-    def test_cc_type_as_string__type_check_fails_on_deserialization(self):
+    def test_cc_type_as_string__type_check_fails_on_deserialization(self, env):
         j = """{ "u" : 2000 }"""
 
-        with self.assertRaises(CaseClassException):
-            new_u = cc_from_json_str(j, CaseClassWithUUID)
+        with pytest.raises(CaseClassException):
+            new_u = env.cc_from_json_str(j, CaseClassWithUUID)
 
     def test_cc_type_as_string__deserialization_succeeds(self):
-        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_incompatible_types=False))
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(fail_on_unversioned_data=False)
 
         j = """{ "u" : "cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd" }"""
 
-        new_u = cc_from_json_str(j, CaseClassWithUUID)
+        new_u = env.cc_from_json_str(j, CaseClassWithUUID)
 
         assert new_u == CaseClassWithUUID(uuid.UUID('cedcb73b-2ca6-45e4-93e5-5c0b42dad3fd'))
 
@@ -678,23 +693,24 @@ class CaseClassSuperType(CaseClass):
         self.details = details
 
 
-class SubTypingTests(TestCase):
-    def test_creation_with_subtype(self):
+class TestSubTypingTests:
+    def test_creation_with_subtype(self, env):
         supertype = CaseClassSuperType('CaseClassSubType1', CaseClassSubType1(100, 200))
 
-        new_supertype = cc_from_json_str(cc_to_json_str(supertype), CaseClassSuperType)
+        new_supertype = env.cc_from_json_str(env.cc_to_json_str(supertype), CaseClassSuperType)
         assert new_supertype == supertype
 
     def test_creation_of_wrong_subtype(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             supertype = CaseClassSuperType('CaseClassSubType1', CaseClassSubType2(1000, 2000))
 
     def test_creation_of_unknown_subtype(self):
-        with self.assertRaises(CaseClassException):
+        with pytest.raises(CaseClassException):
             supertype = CaseClassSuperType('UnknownSubType', CaseClassSubType1(1000, 2000))
 
-    def test_deserialization_of_known_subtype(self):
-        cc_set_default_env(deserialization_ctx=CaseClassDeserializationContext(fail_on_unversioned_data=False))
+    def test_deserialization_of_known_subtype(self, env):
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(fail_on_unversioned_data=False)
 
         j = {
             "submessage_type": "CaseClassSubType2",
@@ -704,10 +720,10 @@ class SubTypingTests(TestCase):
             }
         }
 
-        st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
         assert st == CaseClassSuperType("CaseClassSubType2", CaseClassSubType2(100, 200))
 
-    def test_deserialization_of_known_but_wrong_subtype(self):
+    def test_deserialization_of_known_but_wrong_subtype(self, env):
         j = {
             "submessage_type": "CaseClassSubType1",
             "details": {
@@ -716,10 +732,10 @@ class SubTypingTests(TestCase):
             }
         }
 
-        with self.assertRaises(CaseClassException):
-            st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        with pytest.raises(CaseClassException):
+            st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
-    def test_deserialization_of_unknown_subtype(self):
+    def test_deserialization_of_unknown_subtype(self, env):
         j = {
             "submessage_type": "UnknownSubType",
             "details": {
@@ -727,28 +743,28 @@ class SubTypingTests(TestCase):
                 "subtype2_field2": 200
             }
         }
-        with self.assertRaises(CaseClassException):
-            st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        with pytest.raises(CaseClassException):
+            st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
-    def test_deserialization_with_missing_subtype_field(self):
+    def test_deserialization_with_missing_subtype_field(self, env):
         j = {
             "submessage_type": "CaseClassSubType1"
         }
-        with self.assertRaises(CaseClassException):
-            st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        with pytest.raises(CaseClassException):
+            st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
-    def test_deserialization_with_empty_subtype_field(self):
+    def test_deserialization_with_empty_subtype_field(self, env):
         j = {
             "submessage_type": "CaseClassSubType1",
             "details": {}
         }
-        with self.assertRaises(CaseClassException):
-            st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        with pytest.raises(CaseClassException):
+            st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
-    def test_deserialization_with_null_subtype_field(self):
+    def test_deserialization_with_null_subtype_field(self, env):
         j = {
             "submessage_type": "CaseClassSubType1",
             "details": None
         }
-        with self.assertRaises(CaseClassException):
-            st = cc_from_json_str(json.dumps(j), CaseClassSuperType)
+        with pytest.raises(CaseClassException):
+            st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
