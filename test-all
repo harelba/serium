@@ -1,9 +1,0 @@
-#!/bin/bash
-
-if [ "x$VIRTUAL_ENV" == "x" ];
-then
-        echo "Needs to be in the serium virtual env. Run source serium-activate"
-	exit 1
-fi
-
-pytest --tb=native "$@"

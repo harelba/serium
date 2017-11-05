@@ -7,7 +7,10 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 description = 'Sustainable case-class serialization library'
-long_description = "A serialization library that provides resiliency to data structure evolution"
+
+# Get the long description from the README file
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='serium',
