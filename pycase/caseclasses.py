@@ -462,7 +462,7 @@ class CaseClass(object):
         return ccvt
 
     @classmethod
-    def deversionize_dict(cls, d, deserialization_ctx, cc_from_dict_func):
+    def deversionize_dict(cls, d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func):
         if not '_ccvt' in d:
             LOG.debug("Cannot find ccvt in data for case class {}".format(cls))
             ccvt = cls._get_version_from_external_provider(d, deserialization_ctx.external_version_provider_func)
@@ -500,7 +500,7 @@ class CaseClass(object):
                 LOG.debug("old version instance {}".format(old_version_instance))
                 new_version_instance = cls.migrate(old_version_instance, ccvt)
                 # Hack - Reconvert the new instance to a dict, and delete the top-level version info (we already know that we have the right version, we just migrated to it)
-                new_d = cc_to_dict(new_version_instance)
+                new_d = cc_to_dict_func(new_version_instance)
                 del new_d['_ccvt']
 
                 return new_d
@@ -509,7 +509,7 @@ class CaseClass(object):
                 return d
 
     @classmethod
-    def _from_dict(cls, d, deserialization_ctx, cc_from_dict_func):
+    def _from_dict(cls, d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func):
         subtype_keys_dict = {field_name: d[field_name] for field_name, field_type in cls.CASE_CLASS_EXPECTED_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
@@ -549,7 +549,7 @@ class CaseClass(object):
                 except AttributeError:
                     raise CaseClassException('Could not find case class definition for subtype {} in module {}'.format(subtype_key, target_module))
             if issubclass(expected_type, CaseClass):
-                return expected_type._from_dict(v, deserialization_ctx, cc_from_dict_func)
+                return expected_type._from_dict(v, deserialization_ctx, cc_from_dict_func, cc_to_dict_func)
             else:
                 if isinstance(v, expected_type):
                     return v
@@ -561,7 +561,7 @@ class CaseClass(object):
 
         cls.check_expected_types_metadata()
 
-        deversionied_d = cls.deversionize_dict(d, deserialization_ctx, cc_from_dict_func)
+        deversionied_d = cls.deversionize_dict(d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func)
         cls.check_data(deversionied_d)
         kwargs = {field_name: value_with_cc_support(deversionied_d[field_name], cls.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                   for field_name, field_type in deversionied_d.iteritems()}
@@ -641,7 +641,7 @@ class CaseClassEnv(object):
                 return None
         if not isinstance(d, dict):
             raise CaseClassException('Must provide a dict to convert to a case class. Provided object of type {}. value {}'.format(type(d), d))
-        return cc_type._from_dict(d, self.deserialization_ctx, self.cc_from_dict)
+        return cc_type._from_dict(d, self.deserialization_ctx, self.cc_from_dict,self.cc_to_dict)
 
     def cc_check(self, o, cc_type):
         if not isinstance(o, cc_type):
@@ -653,32 +653,37 @@ class CaseClassEnv(object):
             ## TODO autosupport lists and dicts in cc_*
 
 
-default_env = CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
+# default_env = CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
+#
+#
+# def cc_to_dict(cc):
+#     return default_env.cc_to_dict(cc)
+#
+#
+# def dict_with_cc_to_dict(d):
+#     return default_env.dict_with_cc_to_dict(d)
+#
+#
+# def cc_to_json_str(cc, **kwargs):
+#     return default_env.cc_to_json_str(cc, **kwargs)
+#
+#
+# def cc_from_json_str(s, cc_type):
+#     return default_env.cc_from_json_str(s, cc_type)
+#
+#
+# def cc_from_dict(d, cc_type, raise_on_empty=True):
+#     return default_env.cc_from_dict(d, cc_type, raise_on_empty)
+#
+#
+# def cc_check(o, cc_type):
+#     return default_env.cc_check(o, cc_type)
+#
+#
+# def cc_set_default_env(serialization_ctx=CaseClassSerializationContext(), deserialization_ctx=CaseClassDeserializationContext(), serialization=CaseClassJsonSerialization()):
+#     global default_env
+#     default_env = CaseClassEnv(serialization_ctx, deserialization_ctx, serialization)
+#
 
-def cc_to_dict(cc):
-    return default_env.cc_to_dict(cc)
-
-
-def dict_with_cc_to_dict(d):
-    return default_env.dict_with_cc_to_dict(d)
-
-
-def cc_to_json_str(cc, **kwargs):
-    return default_env.cc_to_json_str(cc, **kwargs)
-
-
-def cc_from_json_str(s, cc_type):
-    return default_env.cc_from_json_str(s, cc_type)
-
-
-def cc_from_dict(d, cc_type, raise_on_empty=True):
-    return default_env.cc_from_dict(d, cc_type, raise_on_empty)
-
-
-def cc_check(o, cc_type):
-    return default_env.cc_check(o, cc_type)
-
-
-def cc_set_default_env(serialization_ctx=CaseClassSerializationContext(), deserialization_ctx=CaseClassDeserializationContext(), serialization=CaseClassJsonSerialization()):
-    global default_env
-    default_env = CaseClassEnv(serialization_ctx,deserialization_ctx,serialization)
+def create_default_env():
+    return CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())

@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 
-from collections import OrderedDict
-from unittest import TestCase
-
-from pycase.caseclasses import CaseClass, cc_to_dict, cc_from_dict, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, cc_to_json_str, cc_from_json_str, CaseClassListType, \
-    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException, default_to_version_1_func, \
-    CaseClassVersionedType
 import json
+from collections import OrderedDict
+
+import pytest
+
+from pycase.caseclasses import CaseClass, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, CaseClassListType, \
+    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException, default_to_version_1_func, \
+    CaseClassVersionedType, create_default_env, CaseClassSerializationContext, CaseClassDeserializationContext
+
+
+@pytest.fixture
+def env(request):
+    return create_default_env()
 
 
 class MyClass(CaseClass):
@@ -18,9 +24,9 @@ class MyClass(CaseClass):
         self.y = y
 
 
-def test_serialization():
+def test_serialization(env):
     a = MyClass(100, 'str1')
-    s = cc_to_dict(a)
+    s = env.cc_to_dict(a)
     assert s['x'] == 100
     assert s['y'] == 'str1'
     assert s['_ccvt'] == 'MyClass/5'
@@ -43,60 +49,60 @@ class AnotherClass(CaseClass):
         self.x = x
 
 
-class CCVTTests(TestCase):
-    def test_nested_serialization(self):
+class TestCCVTTests:
+    def test_nested_serialization(self, env):
         p = ParentClass(42, MyClass(100, 'mystr'))
-        d = cc_to_dict(p)
+        d = env.cc_to_dict(p)
         assert d['some_int'] == 42
         assert d['_ccvt'] == 'ParentClass/7'
         assert d['nested']['x'] == 100
         assert d['nested']['y'] == 'mystr'
         assert d['nested']['_ccvt'] == 'MyClass/5'
 
-    def test_deserialization_of_same_version(self):
+    def test_deserialization_of_same_version(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass/5'}
-        o = cc_from_dict(serialized, MyClass)
+        o = env.cc_from_dict(serialized, MyClass)
 
         assert o == MyClass(100, 'str1')
 
-    def test_deserialization_failure_when_invalid_ccvt(self):
+    def test_deserialization_failure_when_invalid_ccvt(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass'}
 
-        with self.assertRaises(CaseClassException):
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(CaseClassException):
+            o = env.cc_from_dict(serialized, MyClass)
 
-    def test_deserialization_failure_when_invalid_version_in_ccvt(self):
+    def test_deserialization_failure_when_invalid_version_in_ccvt(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass/-3'}
 
-        with self.assertRaises(CaseClassException):
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(CaseClassException):
+            o = env.cc_from_dict(serialized, MyClass)
 
-    def test_deserialization_failure_when_invalid_version_in_ccvt2(self):
+    def test_deserialization_failure_when_invalid_version_in_ccvt2(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass/aaa'}
 
-        with self.assertRaises(CaseClassException):
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(CaseClassException):
+            o = env.cc_from_dict(serialized, MyClass)
 
-    def test_deserialization_failure_when_ccvt_missing(self):
+    def test_deserialization_failure_when_ccvt_missing(self, env):
         serialized = {'y': 'str1', 'x': 100}
 
-        with self.assertRaises(MissingVersionDataCaseClassException) as cm:
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(MissingVersionDataCaseClassException) as cm:
+            o = env.cc_from_dict(serialized, MyClass)
         assert str(cm.exception.ccvt) == 'MyClass/5'
 
-    def test_deserialization_failure_of_different_class(self):
+    def test_deserialization_failure_of_different_class(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'AnotherClass/1'}
-        with self.assertRaises(CaseClassException):
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(CaseClassException):
+            o = env.cc_from_dict(serialized, MyClass)
 
-    def test_deserialization_failure_of_unknown_class(self):
+    def test_deserialization_failure_of_unknown_class(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'UnknownClass/1'}
-        with self.assertRaises(CaseClassException):
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(CaseClassException):
+            o = env.cc_from_dict(serialized, MyClass)
 
-    def test_nested_serialization2(self):
+    def test_nested_serialization2(self, env):
         p = ParentClass(42, MyClass(100, 'mystr'))
-        d = cc_to_dict(p)
+        d = env.cc_to_dict(p)
 
         assert sorted(d.keys()) == ['_ccvt', 'nested', 'some_int']
         assert sorted(d['nested'].keys()) == ['_ccvt', 'x', 'y']
@@ -106,18 +112,18 @@ class CCVTTests(TestCase):
         assert d['nested']['x'] == 100
         assert d['nested']['y'] == 'mystr'
 
-    def test_deserialization_of_different_class(self):
+    def test_deserialization_of_different_class(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'AnotherClass/1'}
 
-        with self.assertRaises(IncompatibleTypesCaseClassException) as cm:
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(IncompatibleTypesCaseClassException) as cm:
+            o = env.cc_from_dict(serialized, MyClass)
         assert str(cm.exception.ccvt) == 'AnotherClass/1'
         assert str(cm.exception.self_vt) == 'MyClass/5'
 
-    def test_deserialization_failure_of_unknown_class_with_ignored_versioning(self):
+    def test_deserialization_failure_of_unknown_class_with_ignored_versioning(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'UnknownClass/1'}
-        with self.assertRaises(CaseClassException):
-            o = cc_from_dict(serialized, MyClass)
+        with pytest.raises(CaseClassException):
+            o = env.cc_from_dict(serialized, MyClass)
 
 
 class SuperType(CaseClass):
@@ -179,61 +185,61 @@ class A(CaseClass):
         self.doubled = doubled
 
 
-class CCVTMigrationOnRead(TestCase):
-    def test_migration_on_read(self):
+class TestCCVTMigrationOnRead:
+    def test_migration_on_read(self, env):
         ser_a = """{ "x": 100, "y": 2001 , "_ccvt": "A/1" }"""
 
-        a_v3 = cc_from_json_str(ser_a, A)
+        a_v3 = env.cc_from_json_str(ser_a, A)
 
         assert a_v3 == A(a=100L, doubled=4002L)
 
-    def test_migration_on_read_2(self):
+    def test_migration_on_read_2(self, env):
         ser_a = """{ "x": 100, "y": 2001 , "_ccvt": "A/1" }"""
 
-        a_v2 = cc_from_json_str(ser_a, A__v2)
+        a_v2 = env.cc_from_json_str(ser_a, A__v2)
         assert a_v2 == A__v2(100L, 2001L)
 
-    def test_migration_on_read_3(self):
+    def test_migration_on_read_3(self, env):
         ser_a = """{ "x": 100, "y": 2001 , "_ccvt": "A/2" }"""
 
-        a_v3 = cc_from_json_str(ser_a, A)
+        a_v3 = env.cc_from_json_str(ser_a, A)
 
         assert a_v3 == A(100L, 4002L)
 
-    def test_failure_to_migrate_on_nonexisting_version(self):
+    def test_failure_to_migrate_on_nonexisting_version(self, env):
         ser_a = """{ "x": 100, "y": 2001 , "_ccvt": "A/4" }"""
 
-        with self.assertRaises(CaseClassException):
-            a_v4 = cc_from_json_str(ser_a, A)
+        with pytest.raises(CaseClassException):
+            a_v4 = env.cc_from_json_str(ser_a, A)
 
-    def test_non_migration(self):
+    def test_non_migration(self, env):
         ser_a = """{ "a": 500, "doubled": 5000 , "_ccvt": "A/3" }"""
 
-        a_v3 = cc_from_json_str(ser_a, A)
+        a_v3 = env.cc_from_json_str(ser_a, A)
 
         assert a_v3 == A(500L, 5000L)
 
-    def test_full_serde_with_migration(self):
+    def test_full_serde_with_migration(self, env):
         a_v1 = A__v1(1, 2L)
-        s = cc_to_json_str(a_v1)
+        s = env.cc_to_json_str(a_v1)
 
-        a = cc_from_json_str(s, A)
+        a = env.cc_from_json_str(s, A)
 
         assert a == A(a=1L, doubled=4L)
 
-    def test_serde_to_specific_version(self):
+    def test_serde_to_specific_version(self, env):
         a_v1 = A__v1(1, 2L)
-        s = cc_to_json_str(a_v1)
+        s = env.cc_to_json_str(a_v1)
 
-        a_v2 = cc_from_json_str(s, A__v2)
+        a_v2 = env.cc_from_json_str(s, A__v2)
 
         assert a_v2 == A__v2(1L, 2L)
 
-    def test_unversioned_data_deserialization__fails(self):
+    def test_unversioned_data_deserialization__fails(self, env):
         ser_a = """{ "a": 500, "doubled": 5000 }"""
 
-        with self.assertRaises(MissingVersionDataCaseClassException) as cm:
-            a_v3 = cc_from_json_str(ser_a, A)
+        with pytest.raises(MissingVersionDataCaseClassException) as cm:
+            a_v3 = env.cc_from_json_str(ser_a, A)
         assert str(cm.exception.ccvt) == 'A/3'
 
 
@@ -299,58 +305,61 @@ class TTag(CaseClass):
         self.b = b
 
 
-class CCVTNestedMigrationOnReadTests(TestCase):
-    def test_serde(self):
+class TestCCVTNestedMigrationOnReadTests:
+    def test_serde(self, env):
         b = B(300, A(12L, 500L))
-        s = cc_to_json_str(b)
+        s = env.cc_to_json_str(b)
 
         deserialized_b = cc_from_json_str(s, B)
 
         assert deserialized_b == b
 
-    def test_serde_with_specific_version(self):
+    def test_serde_with_specific_version(self, env):
         b = B(300, A__v2(5L, 6L))
-        s = cc_to_json_str(b)
+        s = env.cc_to_json_str(b)
         deserialized_b = cc_from_json_str(s, B)
 
         assert deserialized_b == B(300, A(5L, 12L))
 
-    def test_full_serde_2(self):
+    def test_full_serde_2(self, env):
         c = C(1000, B(230, A(500L, 30L)))
 
-        s = cc_to_json_str(c)
+        s = env.cc_to_json_str(c)
 
         deserialized_c = cc_from_json_str(s, C)
 
         assert deserialized_c == C(1000, B(230, A(500L, 30L)))
 
-    def test_top_layer_migration(self):
+    def test_top_layer_migration(self, env):
         c = C__v1(1000, A(500L, 30L))
 
-        s = cc_to_json_str(c)
-        deserialized_c = cc_from_json_str(s, C)
+        s = env.cc_to_json_str(c)
+        deserialized_c = env.cc_from_json_str(s, C)
 
         assert deserialized_c == C(1000, B(500, A(500L, 30L)))
 
-    def test_two_layer_migration(self):
+    def test_two_layer_migration(self, env):
         c = C__v1(1000, A__v1(500, 30L))
 
-        s = cc_to_json_str(c)
-        deserialized_c = cc_from_json_str(s, C)
+        s = env.cc_to_json_str(c)
+        deserialized_c = env.cc_from_json_str(s, C)
 
         assert deserialized_c == C(1000, B(500, A(500L, 60L)))
 
-    def test_two_layer_migration__internal_layer_only(self):
+    def test_two_layer_migration__internal_layer_only(self, env):
         c = C__v1(1000, A__v1(500, 30L))
 
-        s = cc_to_json_str(c)
-        deserialized_c = cc_from_json_str(s, C__v1)
+        s = env.cc_to_json_str(c)
+        deserialized_c = env.cc_from_json_str(s, C__v1)
 
         assert deserialized_c == C__v1(1000, A(500L, 60L))
 
     def test_force_unversioned_serialization(self):
+        env = create_default_env()
+        env.serialization_ctx = CaseClassSerializationContext(force_unversioned_serialization=True)
+
         c = C__v1(1000, A__v1(500, 30L))
-        d = cc_to_dict(c, force_unversioned_serialization=True)
+        d = env.cc_to_dict(c)
 
         assert sorted(d.keys()) == ['my_a', 'val1']
         assert d['val1'] == 1000
@@ -359,6 +368,8 @@ class CCVTNestedMigrationOnReadTests(TestCase):
         assert d['my_a']['y'] == 30L
 
     def test_initial_versioning_logic(self):
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(fail_on_unversioned_data=False, external_version_provider_func=default_to_version_1_func)
         s = """
         {
           "val1": 98,
@@ -368,11 +379,11 @@ class CCVTNestedMigrationOnReadTests(TestCase):
           }
         }"""
 
-        c = cc_from_json_str(s, C, fail_on_unversioned_data=False, external_version_provider_func=default_to_version_1_func)
+        c = env.cc_from_json_str(s, C)
 
         assert c == C(val1=98, my_b=B(500, A(80L, 30 * 2L)))
 
-        s2 = cc_to_json_str(c)
+        s2 = env.cc_to_json_str(c)
         d2 = json.loads(s2)
 
         assert sorted(d2.keys()) == ['_ccvt', 'my_b', 'val1']
@@ -380,60 +391,69 @@ class CCVTNestedMigrationOnReadTests(TestCase):
         assert d2['my_b']['_ccvt'] == 'B/1'
         assert d2['my_b']['my_a']['_ccvt'] == 'A/3'
 
-    def test_externally_provided_non_existent_version(self):
+    def test_externally_provided_non_existent_version(self, env):
         def force_version_100(cc_type, d):
             return 100
 
         s1 = """{ "a" : 111, "b": 222 }"""
 
-        with self.assertRaises(VersionNotFoundCaseClassException) as e1:
-            t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_100)
+        with pytest.raises(VersionNotFoundCaseClassException) as e1:
+            t1 = env.cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_100)
         assert str(e1.exception.ccvt) == 'T/100'
 
-    def test_externally_provided_version__with_static_version_class(self):
+    def test_externally_provided_version__with_static_version_class(self, env):
         def force_version_1(cc_type, d):
             return 1
 
         s1 = """{ "a" : 111, "b": 222 }"""
 
-        t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_1)
+        t1 = env.cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_1)
         assert t1 == T__v1(111, 222)
 
-    def test_externally_provided_ccvt__with_static_version_class(self):
+    def test_externally_provided_ccvt__with_static_version_class(self, env):
         def force_version_1(cc_type, d):
             return CaseClassVersionedType(cc_type, 1)
 
         s1 = """{ "a" : 111, "b": 222 }"""
 
-        t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_1)
+        t1 = env.cc_from_json_str(s1, T__v1, external_version_provider_func=force_version_1)
         assert t1 == T__v1(111, 222)
 
     def test_externally_provided_version__with_static_version_class_that_is_the_current_one(self):
         def force_version_2(cc_type, d):
             return 2
 
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(external_version_provider_func=force_version_2)
+
         s1 = """{ "s1" : "blah 1", "s2": "blah 2" }"""
 
-        t1 = cc_from_json_str(s1, T, external_version_provider_func=force_version_2)
+        t1 = env.cc_from_json_str(s1, T)
         assert t1 == T("blah 1", "blah 2")
 
-    def test_externally_provided_version__with_auto_migration(self):
+    def test_externally_provided_version__with_auto_migration(self, env):
         def force_version_1(cc_type, d):
             return 1
 
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(external_version_provider_func=force_version_1)
+
         s1 = """{ "a" : 111, "b": 222 }"""
 
-        t1 = cc_from_json_str(s1, T, external_version_provider_func=force_version_1)
+        t1 = env.cc_from_json_str(s1, T)
         assert t1 == T('a was 111', 'b was 222')
 
-    def test_externally_provided_version__that_returned_different_class(self):
+    def test_externally_provided_version__that_returned_different_class(self, env):
         def force_ttag(cc_type, d):
             return CaseClassVersionedType(TTag, 5)
 
+        env = create_default_env()
+        env.deserialization_ctx = CaseClassDeserializationContext(external_version_provider_func=force_ttag)
+
         s1 = """{ "a" : 111, "b": 222 }"""
 
-        with self.assertRaises(IncompatibleTypesCaseClassException) as e:
-            t1 = cc_from_json_str(s1, T__v1, external_version_provider_func=force_ttag)
+        with pytest.raises(IncompatibleTypesCaseClassException) as e:
+            t1 = env.cc_from_json_str(s1, T__v1)
         assert str(e.exception.ccvt) == 'TTag/5'
         assert str(e.exception.self_vt) == 'T/1'
 
@@ -446,14 +466,14 @@ class MyCaseClassWithList(CaseClass):
         self.l = l
 
 
-class CCVTListTypeTests(TestCase):
-    def test_list__no_migration(self):
+class TestCCVTListTypeTests:
+    def test_list__no_migration(self, env):
         c = MyCaseClassWithList([A(100L, 200L), A(200L, 300L), A(400L, 500L)])
 
-        d = cc_to_dict(c)
+        d = env.cc_to_dict(c)
         assert set([x['_ccvt'] for x in d['l']]) == {"A/3"}
 
-    def test_list__deserialization_without_migration(self):
+    def test_list__deserialization_without_migration(self, env):
         s = """
         { "l": [
             {"a": 100,"doubled": 200,"_ccvt": "A/3"},
@@ -462,11 +482,11 @@ class CCVTListTypeTests(TestCase):
           ],
             "_ccvt": "MyCaseClassWithList/1"
         }"""
-        c = cc_from_json_str(s, MyCaseClassWithList)
+        c = env.cc_from_json_str(s, MyCaseClassWithList)
 
         assert c == MyCaseClassWithList([A(100L, 200L), A(200L, 300L), A(400L, 500L)])
 
-    def test_list__deserialization_with_migration(self):
+    def test_list__deserialization_with_migration(self, env):
         s = """
         { "l": [
             {"x": 1,"y": 10,"_ccvt": "A/2"},
@@ -475,13 +495,13 @@ class CCVTListTypeTests(TestCase):
           ],
             "_ccvt": "MyCaseClassWithList/1"
         }"""
-        c = cc_from_json_str(s, MyCaseClassWithList)
+        c = env.cc_from_json_str(s, MyCaseClassWithList)
 
         assert c == MyCaseClassWithList([A(1L, 20L), A(2L, 40L), A(3L, 60L)])
 
 
-class CCVTSubTypeTests(TestCase):
-    def test_deserialization_of_subtype(self):
+class TestCCVTSubTypeTests:
+    def test_deserialization_of_subtype(self, env):
         d = {
             "_ccvt": "SuperType/1",
             "super_value": 1000,
@@ -491,14 +511,14 @@ class CCVTSubTypeTests(TestCase):
                 "_ccvt": "SubType/2"
             }
         }
-        c = cc_from_dict(d, SuperType)
+        c = env.cc_from_dict(d, SuperType)
 
         assert c == SuperType(1000, "SubType", SubType(200, 300))
 
-    def test_serialization_of_subtype(self):
+    def test_serialization_of_subtype(self, env):
         c = SuperType(1000, "SubType", SubType(200, 300))
 
-        d = cc_to_dict(c)
+        d = env.cc_to_dict(c)
         assert d['_ccvt'] == 'SuperType/1'
         assert d['super_value'] == 1000
         assert d['request_type'] == SubType.__name__
@@ -506,15 +526,15 @@ class CCVTSubTypeTests(TestCase):
         assert d['details']['y'] == 300
         assert d['details']['_ccvt'] == 'SubType/2'
 
-    def test_serde_1(self):
+    def test_serde_1(self, env):
         c1 = SuperType(1000, "SubType", SubType(200, 300))
 
-        s = cc_to_json_str(c1)
-        c2 = cc_from_json_str(s, SuperType)
+        s = env.cc_to_json_str(c1)
+        c2 = env.cc_from_json_str(s, SuperType)
 
         assert c1 == c2
 
-    def test_deserialization_of_unknown_subtype(self):
+    def test_deserialization_of_unknown_subtype(self, env):
         d = {
             "_ccvt": "SuperType/1",
             "super_value": 1000,
@@ -524,24 +544,24 @@ class CCVTSubTypeTests(TestCase):
                 "_ccvt": "SubType/5"
             }
         }
-        with self.assertRaises(VersionNotFoundCaseClassException) as cm:
-            c = cc_from_dict(d, SuperType)
-        assert str(cm.exception.ccvt) == 'SubType/5'
+        with pytest.raises(VersionNotFoundCaseClassException) as exception:
+            c = env.cc_from_dict(d, SuperType)
+        assert str(exception.ccvt) == 'SubType/5'
 
-    def test_serialization_of_subtype_with_ignored_versioning(self):
+    def test_serialization_of_subtype_with_ignored_versioning(self, env):
         c = SuperType(1000, "SubType", SubType(200, 300))
 
-        d = cc_to_dict(c)
+        d = env.cc_to_dict(c)
         assert d['super_value'] == 1000
         assert d['request_type'] == SubType.__name__
         assert d['details']['x'] == 200
         assert d['details']['y'] == 300
 
-    def test_serde_1_with_ignored_versioning(self):
+    def test_serde_1_with_ignored_versioning(self, env):
         c1 = SuperType(1000, "SubType", SubType(200, 300))
 
-        s = cc_to_json_str(c1)
-        c2 = cc_from_json_str(s, SuperType)
+        s = env.cc_to_json_str(c1)
+        c2 = env.cc_from_json_str(s, SuperType)
 
         assert c1 == c2
 
@@ -575,17 +595,17 @@ class MyTreeNode(CaseClass):
         self.children = children
 
 
-class CCVTSelfTypeTests(TestCase):
-    def test_self_type_serde__without_migration(self):
+class TestCCVTSelfTypeTests:
+    def test_self_type_serde__without_migration(self, env):
         children = [MyTreeNode(2, 'name2', []), MyTreeNode(3, 'name3', [MyTreeNode(4, 'name4', [])])]
         t1 = MyTreeNode(1, 'name1', children)
 
-        s = cc_to_json_str(t1)
-        t2 = cc_from_json_str(s, MyTreeNode)
+        s = env.cc_to_json_str(t1)
+        t2 = env.cc_from_json_str(s, MyTreeNode)
 
         assert t1 == t2
 
-    def test_self_type_serde__with_migration(self):
+    def test_self_type_serde__with_migration(self, env):
         s = """
             {"_ccvt":"MyTreeNode/1","value":1,
             "children":[
@@ -593,13 +613,13 @@ class CCVTSelfTypeTests(TestCase):
                     {"_ccvt":"MyTreeNode/1","value":3,
                         "children":[{"_ccvt":"MyTreeNode/1","value":4,"children":[]}]}]}
         """
-        t2 = cc_from_json_str(s, MyTreeNode)
+        t2 = env.cc_from_json_str(s, MyTreeNode)
 
         children = [MyTreeNode(2, 'noname', []), MyTreeNode(3, 'noname', [MyTreeNode(4, 'noname', [])])]
         t1 = MyTreeNode(1, 'noname', children)
         assert t1 == t2
 
-    def test_self_type_serde__with_mixed_migration_and_no_migration(self):
+    def test_self_type_serde__with_mixed_migration_and_no_migration(self, env):
         s = """
             {"_ccvt":"MyTreeNode/2","value":1,"name":"name1",
             "children":[
@@ -608,11 +628,11 @@ class CCVTSelfTypeTests(TestCase):
             ]
             }
         """
-        t2 = cc_from_json_str(s, MyTreeNode)
+        t2 = env.cc_from_json_str(s, MyTreeNode)
 
         assert t2 == MyTreeNode(1, 'name1', [MyTreeNode(2, 'noname', []), MyTreeNode(3, 'name3', [])])
 
-    def test_self_data_contains_future_version__fails(self):
+    def test_self_data_contains_future_version__fails(self, env):
         s = """
             {"_ccvt":"MyTreeNode/1","value":1,
             "children":[
@@ -620,8 +640,8 @@ class CCVTSelfTypeTests(TestCase):
                 ]
             }
         """
-        with self.assertRaises(MigrationPathNotFoundCaseClassException):
-            t2 = cc_from_json_str(s, MyTreeNode)
+        with pytest.raises(MigrationPathNotFoundCaseClassException):
+            t2 = env.cc_from_json_str(s, MyTreeNode)
 
 
 class TwoWayMigrationData__v1(CaseClass):
@@ -649,20 +669,20 @@ class TwoWayMigrationData(CaseClass):
         self.s = s
 
 
-class TwoWayMigrationTests(TestCase):
-    def test_two_way_migration_forward(self):
+class TestTwoWayMigrationTests:
+    def test_two_way_migration_forward(self, env):
         c1 = TwoWayMigrationData__v1(100, 200)
-        s = cc_to_json_str(c1)
+        s = env.cc_to_json_str(c1)
 
-        c2 = cc_from_json_str(s, TwoWayMigrationData)
+        c2 = env.cc_from_json_str(s, TwoWayMigrationData)
 
         assert c2 == TwoWayMigrationData(100, 200, 300)
 
-    def test_two_way_migration_backward(self):
+    def test_two_way_migration_backward(self, env):
         c1 = TwoWayMigrationData(100, 200, 300)
-        s = cc_to_json_str(c1)
+        s = env.cc_to_json_str(c1)
 
-        c2 = cc_from_json_str(s, TwoWayMigrationData__v1)
+        c2 = env.cc_from_json_str(s, TwoWayMigrationData__v1)
 
         assert c2 == TwoWayMigrationData__v1(100, 200)
 
@@ -696,12 +716,12 @@ class WithDict(CaseClass):
         self.x = x
 
 
-class MigrationOfCaseClassWithDict(TestCase):
-    def test_serde_of_caseclass_with_dict(self):
+class TestMigrationOfCaseClassWithDict:
+    def test_serde_of_caseclass_with_dict(self, env):
         c1 = WithDict__v1(100, {"x": 100, "y": 200})
-        s = cc_to_json_str(c1)
+        s = env.cc_to_json_str(c1)
 
-        c2 = cc_from_json_str(s, WithDict)
+        c2 = env.cc_from_json_str(s, WithDict)
 
         assert c2.val == c1.val
         assert c2.x == c1.d['x']
