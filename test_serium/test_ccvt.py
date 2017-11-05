@@ -19,7 +19,7 @@ def env(request):
 
 
 class MyClass(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('x', int), ('y', str)])
+    CC_TYPES = OrderedDict([('x', int), ('y', str)])
     CC_V = 5
 
     def __init__(self, x, y):
@@ -36,7 +36,7 @@ def test_serialization(env):
 
 
 class ParentClass(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('some_int', int), ('nested', MyClass)])
+    CC_TYPES = OrderedDict([('some_int', int), ('nested', MyClass)])
     CC_V = 7
 
     def __init__(self, some_int, nested):
@@ -45,7 +45,7 @@ class ParentClass(CaseClass):
 
 
 class AnotherClass(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('x', int)])
+    CC_TYPES = OrderedDict([('x', int)])
     CC_V = 1
 
     def __init__(self, x):
@@ -130,7 +130,7 @@ class TestCCVTTests:
 
 
 class SuperType(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('super_value', int),
         ('request_type', CaseClassSubTypeKey("details")),
         ('details', CaseClassSubTypeValue('request_type'))
@@ -144,7 +144,7 @@ class SuperType(CaseClass):
 
 
 class SubType(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('x', int),
         ('y', int)
     ])
@@ -156,7 +156,7 @@ class SubType(CaseClass):
 
 
 class A__v1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('x', int), ('y', long)])
+    CC_TYPES = OrderedDict([('x', int), ('y', long)])
     CC_V = 1
 
     def __init__(self, x, y):
@@ -165,7 +165,7 @@ class A__v1(CaseClass):
 
 
 class A__v2(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('x', long), ('y', long)])
+    CC_TYPES = OrderedDict([('x', long), ('y', long)])
     CC_V = 2
     CC_MIGRATIONS = {
         1: lambda old: A__v2(x=long(old.x), y=old.y)
@@ -177,7 +177,7 @@ class A__v2(CaseClass):
 
 
 class A(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', long), ('doubled', long)])
+    CC_TYPES = OrderedDict([('a', long), ('doubled', long)])
     CC_V = 3
     CC_MIGRATIONS = {
         2: lambda old: A(a=old.x, doubled=old.y * 2)
@@ -247,7 +247,7 @@ class TestCCVTMigrationOnRead:
 
 
 class B(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('my_value', int), ('my_a', A)])
+    CC_TYPES = OrderedDict([('my_value', int), ('my_a', A)])
     CC_V = 1
     CC_MIGRATIONS = {}
 
@@ -257,7 +257,7 @@ class B(CaseClass):
 
 
 class C__v1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('val1', int), ('my_a', A)])
+    CC_TYPES = OrderedDict([('val1', int), ('my_a', A)])
     CC_V = 1
     CC_MIGRATIONS = {}
 
@@ -267,7 +267,7 @@ class C__v1(CaseClass):
 
 
 class C(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('val1', int), ('my_b', B)])
+    CC_TYPES = OrderedDict([('val1', int), ('my_b', B)])
     CC_V = 2
     CC_MIGRATIONS = {
         1: lambda old: C(old.val1, B(500, old.my_a))
@@ -279,7 +279,7 @@ class C(CaseClass):
 
 
 class T__v1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int)])
+    CC_TYPES = OrderedDict([('a', int), ('b', int)])
     CC_V = 1
 
     def __init__(self, a, b):
@@ -288,7 +288,7 @@ class T__v1(CaseClass):
 
 
 class T(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('s1', str), ('s2', str)])
+    CC_TYPES = OrderedDict([('s1', str), ('s2', str)])
     CC_V = 2
     CC_MIGRATIONS = {
         1: lambda old: T('a was %d' % old.a, 'b was %d' % old.b)
@@ -300,7 +300,7 @@ class T(CaseClass):
 
 
 class TTag(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int)])
+    CC_TYPES = OrderedDict([('a', int), ('b', int)])
     CC_V = 1
 
     def __init__(self, a, b):
@@ -471,7 +471,7 @@ class TestCCVTNestedMigrationOnReadTests:
 
 
 class MyCaseClassWithList(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('l', CaseClassListType(A))])
+    CC_TYPES = OrderedDict([('l', CaseClassListType(A))])
     CC_V = 1
 
     def __init__(self, l):
@@ -579,7 +579,7 @@ class TestCCVTSubTypeTests:
 
 
 class MyTreeNode__v1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('value', int),
         ('children', CaseClassListType(CaseClassSelfType()))
     ])
@@ -591,7 +591,7 @@ class MyTreeNode__v1(CaseClass):
 
 
 class MyTreeNode(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('value', int),
         ('name', str),
         ('children', CaseClassListType(CaseClassSelfType()))
@@ -657,7 +657,7 @@ class TestCCVTSelfTypeTests:
 
 
 class TwoWayMigrationData__v1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('x1', int), ('x2', int)])
+    CC_TYPES = OrderedDict([('x1', int), ('x2', int)])
     CC_V = 1
     CC_MIGRATIONS = {
         2: lambda new: TwoWayMigrationData__v1(new.y1, new.y2)
@@ -669,7 +669,7 @@ class TwoWayMigrationData__v1(CaseClass):
 
 
 class TwoWayMigrationData(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('y1', int), ('y2', int), ('s', int)])
+    CC_TYPES = OrderedDict([('y1', int), ('y2', int), ('s', int)])
     CC_V = 2
     CC_MIGRATIONS = {
         1: lambda old: TwoWayMigrationData(old.x1, old.x2, old.x1 + old.x2)
@@ -700,7 +700,7 @@ class TestTwoWayMigrationTests:
 
 
 class WithDict__v1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('val', int),
         ('d', dict)
     ])
@@ -712,7 +712,7 @@ class WithDict__v1(CaseClass):
 
 
 class WithDict(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('val', int),
         ('d', dict),
         ('x', int)
