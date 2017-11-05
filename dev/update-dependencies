@@ -5,7 +5,7 @@ base_folder="$(dirname $0)"
 project_root_folder="${base_folder}/.."
 
 source `which virtualenvwrapper.sh`
-workon pycase
+workon serium 
 
 
 if [ "x$VIRTUAL_ENV" == "x" ];

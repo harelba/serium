@@ -55,10 +55,4 @@ setup(
         'dev': ['pytest'],
         'test': ['pytest'],
     }
-#    ,
-#    entry_points={
-#        'console_scripts': [
-#            'pycase=pycase:pycase_cli',
-#        ],
-#    }
 )

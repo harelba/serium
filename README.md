@@ -1,5 +1,5 @@
 
-# pycase
+# serium
 This is an initial attempt to provide case classes in python, which have the following properties:
 1. Strictly typed
 2. Nested as needed, including recursive definitions
@@ -27,13 +27,13 @@ no pip install yet. Set up a dev env to take a test drive.
 
 ## Dev envrionment
 1. Clone
-2. Run `dev/prepare-dev-env` (one time only, creates a virtualenv called pycase)
-3. Run `source pycase-activate` every time you wanna meddle with the project
-4. pycase module will be part of the venv. You can write python code that uses `from pycase... import`
+2. Run `dev/prepare-dev-env` (one time only, creates a virtualenv called serium)
+3. Run `source serium-activate` every time you wanna meddle with the project
+4. serium module will be part of the venv. You can write python code that uses `from serium... import`
 
 
 ## Basic Tutorial
-Make sure you have ipython installed on the virtualenv. To do that, run `pip install ipython` after running `source pycase-activate`.
+Make sure you have ipython installed on the virtualenv. To do that, run `pip install ipython` after running `source serium-activate`.
 
 Run ipython in order to follow the tutorial and copy-paste stuff into its REPL.
 
@@ -50,11 +50,11 @@ import sys
 from collections import OrderedDict
 from uuid import uuid4
 
-from pycase.caseclasses import CaseClass, CaseClassException, cc_to_json_str, cc_from_json_str, cc_to_dict, cc_from_dict, CaseClassListType, CaseClassSubTypeKey, CaseClassSubTypeValue, \
+from serium.caseclasses import CaseClass, CaseClassException, cc_to_json_str, cc_from_json_str, cc_to_dict, cc_from_dict, CaseClassListType, CaseClassSubTypeKey, CaseClassSubTypeValue, \
     CaseClassSelfType
-from pycase.types import cc_uuid
+from serium.types import cc_uuid
 
-# Define logging level as INFO. Change to DEBUG to see pycase logs
+# Define logging level as INFO. Change to DEBUG to see serium logs
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
@@ -152,7 +152,7 @@ print recreated_user
 User(user_id=UUID('1a62a52e-d0b3-4003-8ae0-bd87affd210b'),name=u'my name',address=u'my address')
 """
 
-# pycase also includes the methods cc_to_dict and cc_from_dict, which serialize/deserialize objects into a dictionary. This is extremely useful when passing case class objects
+# serium also includes the methods cc_to_dict and cc_from_dict, which serialize/deserialize objects into a dictionary. This is extremely useful when passing case class objects
 # into libraries which expect dictionaries, or doing the serialization themselves.
 user_as_dict = cc_to_dict(u)
 """
@@ -336,11 +336,11 @@ TreeNode(value=100.0,children=[TreeNode(value=200.0,children=[]), TreeNode(value
 """
 
 
-# Now let's move on to a concept called "subtyping". pycase has the capability to encapsulate multiple types of "submessages" inside the definition of one "supermessage"
+# Now let's move on to a concept called "subtyping". serium has the capability to encapsulate multiple types of "submessages" inside the definition of one "supermessage"
 
 # Let's create the "supermessage" type. We'll call it "Envelope". This class is a "wrapper" around multiple submessages, which will reside under the "msg" field.
 # In order to be able to determine which msg is contained inside msg (and hence know its schema), there's another field called "msg_type", which denotes the specific type
-# of the submessage. pycase requires you to declare this relationship between msg_type and msg. This is done by the special-types CaseClassSubTypeKey and CaseClassSubTypeValue
+# of the submessage. serium requires you to declare this relationship between msg_type and msg. This is done by the special-types CaseClassSubTypeKey and CaseClassSubTypeValue
 # Naming and syntax for this will be improved at some point
 class Envelope(CaseClass):
     CASE_CLASS_EXPECTED_TYPES = OrderedDict([
@@ -436,7 +436,7 @@ class A(CaseClass):
 # sum of the elements in the list a2. This kind of logical change is not supported in most schema evolution schemes, as they
 # only support "protocol-level evolution", such as adding a new field with a default value, promoting an int to a float, etc.
 #
-# In pycase such a change is supposed to be a first-class-citien. Let's see how. We'll describe the changes that the developer
+# In serium such a change is supposed to be a first-class-citien. Let's see how. We'll describe the changes that the developer
 # should be doing in the code as part of this change.
 
 # We take the original A class and change its name to its A__v1. The rest of it remain identical to before:
@@ -497,7 +497,7 @@ print new_a
 A(a1=200,a2=[10, 20, 30],s=60)
 """
 
-# We can see that the new_a instance contains the s field with the proper sum. Behind the scenes, pycase would notice that the serialized a was of version 1 (due to the _ccvt='A/1' field),
+# We can see that the new_a instance contains the s field with the proper sum. Behind the scenes, serium would notice that the serialized a was of version 1 (due to the _ccvt='A/1' field),
 # and would trigger an auto-conversion during the deserialization phase.
 
 # Let's see how the new_a looks like after it's serialized:
@@ -522,7 +522,7 @@ print cc_to_json_str(new_a)
 # Another thing to notice is that this means that the actual code which uses the deserialized A instance always uses the newest version, allowing the code to go
 # forward without requiring full data migration on the storage layer.
 
-# Full data migration might still be needed in some of the cases, in order to prevent having too many versions in parallel. However the way pycase works allows to decouple
+# Full data migration might still be needed in some of the cases, in order to prevent having too many versions in parallel. However the way serium works allows to decouple
 # the delivery of changes from performing the data migration. The data migration can be done after delivery, or only once in a while, and would only require reading all the
 # entries and just writing them back. The auto-migration would take care of the rest.
 
@@ -621,7 +621,7 @@ print cc_to_json_str(new_a)
 
 
 # Notice that the resulting new_a instance is of version A/3, and that it has been automatically migrated from version 1. The important thing here
-# is that there was no need to actually provide the lambda for the migration of A/1 to A/3. pycase has found a path of migration from 1 to 2 and then to 3,
+# is that there was no need to actually provide the lambda for the migration of A/1 to A/3. serium has found a path of migration from 1 to 2 and then to 3,
 # applying it automatically. If you wanted you could provide a direct migration lambda from version 1 inside A/3's CC_MIGRATIONS, and it would have been used
 # without resorting to a double migration. From the end-user's viewpoint, this doesn't matter though - The end result is a valid A/3 instance that can be used
 # around the code.
