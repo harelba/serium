@@ -321,7 +321,7 @@ class CaseClass(object):
 
     # Missing some stuff for completeness, but not urgent
 
-    def _to_dict(self, force_unversioned_serialization=False):
+    def _to_dict(self, serialization_ctx):
         subtype_keys_dict = {field_name: self.__dict__[field_name] for field_name, field_type in self.__class__.CASE_CLASS_EXPECTED_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
@@ -354,7 +354,7 @@ class CaseClass(object):
                                                                                                                                                                 expected_type.subtype_key_field_name))
             elif issubclass(expected_type, CaseClass):
                 if isinstance(v, CaseClass):
-                    return v._to_dict(force_unversioned_serialization=force_unversioned_serialization)
+                    return v._to_dict(serialization_ctx)
                 else:
                     raise CaseClassException("Expected CaseClass of type {} and got instead value of type {}. Value is {}".format(expected_type, type(v), v))
             else:
@@ -366,7 +366,7 @@ class CaseClass(object):
         resulting_dict = {field_name: cc_value(field_value, self.__class__.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                           for field_name, field_value in self.__dict__.iteritems()}
 
-        if not force_unversioned_serialization:
+        if not serialization_ctx.force_unversioned_serialization:
             ccvt = self.__class__.get_versioned_type()
             resulting_dict['_ccvt'] = versioned_type_to_str(ccvt)
         return resulting_dict
@@ -462,14 +462,14 @@ class CaseClass(object):
         return ccvt
 
     @classmethod
-    def deversionize_dict(cls, d, fail_on_unversioned_data, fail_on_incompatible_types, external_version_provider_func):
+    def deversionize_dict(cls, d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func):
         if not '_ccvt' in d:
             LOG.debug("Cannot find ccvt in data for case class {}".format(cls))
-            ccvt = cls._get_version_from_external_provider(d, external_version_provider_func)
+            ccvt = cls._get_version_from_external_provider(d, deserialization_ctx.external_version_provider_func)
             LOG.debug("External version provider returned {} for case class {}".format(ccvt, cls))
 
             if ccvt is None:
-                if fail_on_unversioned_data:
+                if deserialization_ctx.fail_on_unversioned_data:
                     raise MissingVersionDataCaseClassException(cls.get_versioned_type())
                 else:
                     ccvt = cls.get_versioned_type()
@@ -482,7 +482,7 @@ class CaseClass(object):
 
         self_vt = cls.get_versioned_type()
         if ccvt.cc_type_name != self_vt.cc_type_name:
-            if fail_on_incompatible_types:
+            if deserialization_ctx.fail_on_incompatible_types:
                 raise IncompatibleTypesCaseClassException(ccvt, self_vt)
             else:
                 LOG.debug('Incompatible types {} and {}, but fail_on_incompatible_types=False, so continuing anyway'.format(ccvt, self_vt))
@@ -495,12 +495,12 @@ class CaseClass(object):
                 LOG.debug("old version cc {}".format(old_version_cc))
 
                 d['_ccvt'] = versioned_type_to_str(ccvt)
-                old_version_instance = cc_from_dict(d, old_version_cc, external_version_provider_func=external_version_provider_func)
+                old_version_instance = cc_from_dict_func(d, old_version_cc)
 
                 LOG.debug("old version instance {}".format(old_version_instance))
                 new_version_instance = cls.migrate(old_version_instance, ccvt)
                 # Hack - Reconvert the new instance to a dict, and delete the top-level version info (we already know that we have the right version, we just migrated to it)
-                new_d = cc_to_dict(new_version_instance)
+                new_d = cc_to_dict_func(new_version_instance)
                 del new_d['_ccvt']
 
                 return new_d
@@ -509,7 +509,7 @@ class CaseClass(object):
                 return d
 
     @classmethod
-    def _from_dict(cls, d, fail_on_unversioned_data, fail_on_incompatible_types, external_version_provider_func):
+    def _from_dict(cls, d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func):
         subtype_keys_dict = {field_name: d[field_name] for field_name, field_type in cls.CASE_CLASS_EXPECTED_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
@@ -549,11 +549,7 @@ class CaseClass(object):
                 except AttributeError:
                     raise CaseClassException('Could not find case class definition for subtype {} in module {}'.format(subtype_key, target_module))
             if issubclass(expected_type, CaseClass):
-                return expected_type._from_dict(v,
-                                                fail_on_unversioned_data=fail_on_unversioned_data,
-                                                fail_on_incompatible_types=fail_on_incompatible_types,
-                                                external_version_provider_func=external_version_provider_func
-                                                )
+                return expected_type._from_dict(v, deserialization_ctx, cc_from_dict_func, cc_to_dict_func)
             else:
                 if isinstance(v, expected_type):
                     return v
@@ -565,10 +561,7 @@ class CaseClass(object):
 
         cls.check_expected_types_metadata()
 
-        deversionied_d = cls.deversionize_dict(d,
-                                               fail_on_unversioned_data=fail_on_unversioned_data,
-                                               fail_on_incompatible_types=fail_on_incompatible_types,
-                                               external_version_provider_func=external_version_provider_func)
+        deversionied_d = cls.deversionize_dict(d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func)
         cls.check_data(deversionied_d)
         kwargs = {field_name: value_with_cc_support(deversionied_d[field_name], cls.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                   for field_name, field_type in deversionied_d.iteritems()}
@@ -576,73 +569,116 @@ class CaseClass(object):
         return cls(**kwargs)
 
 
-def cc_to_dict(cc, force_unversioned_serialization=False):
-    if isinstance(cc, list):
-        return [cc_to_dict(e, force_unversioned_serialization=force_unversioned_serialization) for e in cc]
-    if not isinstance(cc, CaseClass):
-        raise CaseClassException('Must provide a case class ({})'.format(cc))
-    return cc._to_dict(force_unversioned_serialization=force_unversioned_serialization)
-
-
-# Experimental - One way conversion only
-def dict_with_cc_to_dict(d):
-    if isinstance(d, dict):
-        def to_value(v):
-            if isinstance(v, CaseClass):
-                return cc_to_dict(v)
-            else:
-                return v
-
-        return {k: to_value(v) for k, v in d.iteritems()}
-    else:
-        raise CaseClassException('Must provide a dict')
-
-
-def cc_to_json_str(cc, encoding='utf-8', force_unversioned_serialization=False, **kwargs):
-    def serialize_cc_if_needed(v):
-        if isinstance(v, CaseClass):
-            return cc_to_dict(v, force_unversioned_serialization=force_unversioned_serialization)
-        else:
-            return v
-
-    return json.dumps(cc_to_dict(cc, force_unversioned_serialization=force_unversioned_serialization), encoding=encoding, default=serialize_cc_if_needed, indent=2, **kwargs)
-
-
 def default_to_version_1_func(cc_type, d):
     return 1
 
 
-def cc_from_json_str(s, cc_type, encoding='utf-8', fail_on_unversioned_data=True, fail_on_incompatible_types=True, external_version_provider_func=None):
-    if isinstance(cc_type, CaseClass):
-        raise CaseClassException('Must provide a case class type (actual type is {})'.format(type(cc_type)))
-    return cc_from_dict(json.loads(s, encoding=encoding), cc_type,
-                        fail_on_unversioned_data=fail_on_unversioned_data,
-                        fail_on_incompatible_types=fail_on_incompatible_types,
-                        external_version_provider_func=external_version_provider_func)
+class CaseClassJsonSerialization(object):
+    def __init__(self, encoding='utf-8', indent=2):
+        self.encoding = encoding
+        self.indent = indent
+
+    def serialize(self, d, **kwargs):
+        return json.dumps(d, encoding=self.encoding, indent=self.indent, **kwargs)
+
+    def deserialize(self, s):
+        return json.loads(s, encoding=self.encoding)
 
 
-def cc_from_dict(d, cc_type, raise_on_empty=True,
-                 fail_on_unversioned_data=True,
-                 fail_on_incompatible_types=True,
-                 external_version_provider_func=None):
-    if d is None:
-        if raise_on_empty:
-            raise CaseClassException('Could not create case class {} - Empty input'.format(cc_type))
+class CaseClassSerializationContext(object):
+    def __init__(self, force_unversioned_serialization=False):
+        self.force_unversioned_serialization = force_unversioned_serialization
+
+
+class CaseClassDeserializationContext(object):
+    def __init__(self, fail_on_unversioned_data=True, fail_on_incompatible_types=True, external_version_provider_func=None):
+        self.fail_on_unversioned_data = fail_on_unversioned_data
+        self.fail_on_incompatible_types = fail_on_incompatible_types
+        self.external_version_provider_func = external_version_provider_func
+
+
+class CaseClassEnv(object):
+    def __init__(self, serialization_ctx, deserialization_ctx, serialization):
+        self.serialization_ctx = serialization_ctx
+        self.deserialization_ctx = deserialization_ctx
+        self.serialization = serialization
+
+    def cc_to_dict(self, cc):
+        if isinstance(cc, list):
+            return [self.cc_to_dict(e) for e in cc]
+        if not isinstance(cc, CaseClass):
+            raise CaseClassException('Must provide a case class ({})'.format(cc))
+        return cc._to_dict(self.serialization_ctx)
+
+    # Experimental - One way conversion only
+    def dict_with_cc_to_dict(self, d):
+        if isinstance(d, dict):
+            def to_value(v):
+                if isinstance(v, CaseClass):
+                    return self.cc_to_dict(v)
+                else:
+                    return v
+
+            return {k: to_value(v) for k, v in d.iteritems()}
         else:
-            return None
-    if not isinstance(d, dict):
-        raise CaseClassException('Must provide a dict to convert to a case class. Provided object of type {}. value {}'.format(type(d), d))
-    return cc_type._from_dict(d,
-                              fail_on_unversioned_data=fail_on_unversioned_data,
-                              fail_on_incompatible_types=fail_on_incompatible_types,
-                              external_version_provider_func=external_version_provider_func)
+            raise CaseClassException('Must provide a dict')
+
+    def cc_to_json_str(self, cc, **kwargs):
+        d = self.cc_to_dict(cc)
+        return self.serialization.serialize(d, **kwargs)
+
+    def cc_from_json_str(self, s, cc_type):
+        if isinstance(cc_type, CaseClass):
+            raise CaseClassException('Must provide a case class type (actual type is {})'.format(type(cc_type)))
+        d = self.serialization.deserialize(s)
+        return self.cc_from_dict(d, cc_type)
+
+    def cc_from_dict(self, d, cc_type, raise_on_empty=True):
+        if d is None:
+            if raise_on_empty:
+                raise CaseClassException('Could not create case class {} - Empty input'.format(cc_type))
+            else:
+                return None
+        if not isinstance(d, dict):
+            raise CaseClassException('Must provide a dict to convert to a case class. Provided object of type {}. value {}'.format(type(d), d))
+        return cc_type._from_dict(d, self.deserialization_ctx, self.cc_from_dict,self.cc_to_dict)
+
+    def cc_check(self, o, cc_type):
+        if not isinstance(o, cc_type):
+            raise CaseClassException('Object is not of type {}. Object: {}'.format(cc_type, repr(o)))
+
+            # TODO
+            # def cc_deep_copy(o,**kwargs) where kwargs is a deep-key dict (e.g. x.y.z)
+
+            ## TODO autosupport lists and dicts in cc_*
+
+
+def create_default_env():
+    return CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
+
+default_env = create_default_env()
+
+
+def cc_to_dict(cc):
+    return default_env.cc_to_dict(cc)
+
+
+def dict_with_cc_to_dict(d):
+    return default_env.dict_with_cc_to_dict(d)
+
+
+def cc_to_json_str(cc, **kwargs):
+    return default_env.cc_to_json_str(cc, **kwargs)
+
+
+def cc_from_json_str(s, cc_type):
+    return default_env.cc_from_json_str(s, cc_type)
+
+
+def cc_from_dict(d, cc_type, raise_on_empty=True):
+    return default_env.cc_from_dict(d, cc_type, raise_on_empty)
 
 
 def cc_check(o, cc_type):
-    if not isinstance(o, cc_type):
-        raise CaseClassException('Object is not of type {}. Object: {}'.format(cc_type, repr(o)))
+    return default_env.cc_check(o, cc_type)
 
-# TODO
-# def cc_deep_copy(o,**kwargs) where kwargs is a deep-key dict (e.g. x.y.z)
-
-## TODO autosupport lists and dicts in cc_*
