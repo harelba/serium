@@ -135,7 +135,7 @@ class FrozenCaseClassMetaClass(type):
 
         def check_parameter_types(expected_types, args, kwargs):
             if expected_types is None:
-                raise CaseClassException('CASE_CLASS_EXPECTED_TYPES must be defined on case class {}'.format(cls))
+                raise CaseClassException('CC_TYPES must be defined on case class {}'.format(cls))
 
             merged_args_as_dict = OrderedDict(zip(expected_types.keys(), args), **kwargs)
             subtype_keys_dict = {field_name: merged_args_as_dict[field_name] for field_name, field_type in expected_types.iteritems() if isinstance(field_type, CaseClassSubTypeKey)}
@@ -185,7 +185,7 @@ class FrozenCaseClassMetaClass(type):
 
         def override_setattr_after(fn):
             def _wrapper(*args, **kwargs):
-                check_parameter_types(cls.CASE_CLASS_EXPECTED_TYPES, args[1:], kwargs)
+                check_parameter_types(cls.CC_TYPES, args[1:], kwargs)
                 # Theoretically, we would have wanted to test the actual parameters here, but this would require performing reflection stuff, and this in turn
                 # would require optimizations.
                 # So check_actual_parameters is called after the fn() call (which is actually the call to __init__ on the case class), and
@@ -200,7 +200,7 @@ class FrozenCaseClassMetaClass(type):
                 except TypeError as e:
                     raise CaseClassException(
                         'Missing data for creating case class {}. If this is a new version of another case class, then make sure that all new fields have defaults. {}.'.format(cls, e))
-                check_actual_parameters(cls.CASE_CLASS_EXPECTED_TYPES, args[0].__dict__)
+                check_actual_parameters(cls.CC_TYPES, args[0].__dict__)
 
             return _wrapper
 
@@ -276,13 +276,13 @@ def versioned_type_to_str(vt):
 class CaseClass(object):
     __metaclass__ = FrozenCaseClassMetaClass
     # Needs to be an OrderedDict. Could be replaced with type hinting at some point
-    CASE_CLASS_EXPECTED_TYPES = None
+    CC_TYPES = None
     # TODO Should backward compatibility be done here or in the code itself
     CC_V = 1
     CC_MIGRATIONS = {}
 
     def __str__(self):
-        params_str = ",".join(["{}={}".format(field_name, repr(self.__dict__[field_name])) for field_name, desc in self.__class__.CASE_CLASS_EXPECTED_TYPES.iteritems()])
+        params_str = ",".join(["{}={}".format(field_name, repr(self.__dict__[field_name])) for field_name, desc in self.__class__.CC_TYPES.iteritems()])
         return "{}({})".format(self._type_name(), params_str)
 
     def __repr__(self):
@@ -293,7 +293,7 @@ class CaseClass(object):
 
     def copy(self, **kwargs):
         for k in kwargs:
-            if k not in self.__class__.CASE_CLASS_EXPECTED_TYPES.keys():
+            if k not in self.__class__.CC_TYPES.keys():
                 raise CaseClassException("Field {} doesn't exist in the case class {}".format(k, self.__class__))
         d = dict(self.__dict__, **kwargs)
         try:
@@ -322,7 +322,7 @@ class CaseClass(object):
     # Missing some stuff for completeness, but not urgent
 
     def _to_dict(self, serialization_ctx):
-        subtype_keys_dict = {field_name: self.__dict__[field_name] for field_name, field_type in self.__class__.CASE_CLASS_EXPECTED_TYPES.iteritems()
+        subtype_keys_dict = {field_name: self.__dict__[field_name] for field_name, field_type in self.__class__.CC_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
         def cc_value(v, expected_type):
@@ -363,7 +363,7 @@ class CaseClass(object):
                 else:
                     return expected_type(v)
 
-        resulting_dict = {field_name: cc_value(field_value, self.__class__.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
+        resulting_dict = {field_name: cc_value(field_value, self.__class__.CC_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                           for field_name, field_value in self.__dict__.iteritems()}
 
         if not serialization_ctx.force_unversioned_serialization:
@@ -381,22 +381,22 @@ class CaseClass(object):
         return CaseClassVersionedType(cls, ccv)
 
     def __getattr__(self, item):
-        if item not in self.__class__.CASE_CLASS_EXPECTED_TYPES.keys():
+        if item not in self.__class__.CC_TYPES.keys():
             raise CaseClassException("Field {} not part of case class".format(item))
 
     @classmethod
     def check_expected_types_metadata(cls):
-        if cls.CASE_CLASS_EXPECTED_TYPES is None:
-            raise CaseClassException('Must provide a dict of field names to types at the class level using a CASE_CLASS_EXPECTED_TYPES class field')
-        expected_types = cls.CASE_CLASS_EXPECTED_TYPES
+        if cls.CC_TYPES is None:
+            raise CaseClassException('Must provide a dict of field names to types at the class level using a CC_TYPES class field')
+        expected_types = cls.CC_TYPES
         if not isinstance(expected_types, OrderedDict):
-            raise CaseClassException('CASE_CLASS_EXPECTED_TYPES must be an OrderedDict of field names to types')
+            raise CaseClassException('CC_TYPES must be an OrderedDict of field names to types')
             # TODO Check keys are strings and values are types
 
     @classmethod
     def check_data(cls, d):
         for k in d.keys():
-            if k not in cls.CASE_CLASS_EXPECTED_TYPES.keys():
+            if k not in cls.CC_TYPES.keys():
                 raise CaseClassException("Data contains an unexpected field {}, which does not belong to case class {}".format(k, cls))
 
     @classmethod
@@ -510,7 +510,7 @@ class CaseClass(object):
 
     @classmethod
     def _from_dict(cls, d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func):
-        subtype_keys_dict = {field_name: d[field_name] for field_name, field_type in cls.CASE_CLASS_EXPECTED_TYPES.iteritems()
+        subtype_keys_dict = {field_name: d[field_name] for field_name, field_type in cls.CC_TYPES.iteritems()
                              if isinstance(field_type, CaseClassSubTypeKey)}
 
         def value_with_cc_support(v, expected_type):
@@ -563,9 +563,9 @@ class CaseClass(object):
 
         deversionied_d = cls.deversionize_dict(d, deserialization_ctx, cc_from_dict_func, cc_to_dict_func)
         cls.check_data(deversionied_d)
-        kwargs = {field_name: value_with_cc_support(deversionied_d[field_name], cls.CASE_CLASS_EXPECTED_TYPES[field_name])  # pylint: disable=unsubscriptable-object
+        kwargs = {field_name: value_with_cc_support(deversionied_d[field_name], cls.CC_TYPES[field_name])  # pylint: disable=unsubscriptable-object
                   for field_name, field_type in deversionied_d.iteritems()}
-        # kwargs = {field_name: value_with_cc_support(d[field_name], field_type) for field_name, field_type in cls.CASE_CLASS_EXPECTED_TYPES.iteritems()}
+        # kwargs = {field_name: value_with_cc_support(d[field_name], field_type) for field_name, field_type in cls.CC_TYPES.iteritems()}
         return cls(**kwargs)
 
 
@@ -579,7 +579,7 @@ class CaseClassJsonSerialization(object):
         self.indent = indent
 
     def serialize(self, d, **kwargs):
-        return json.dumps(d, encoding=self.encoding, indent=self.indent, **kwargs)
+        return json.dumps(d, encoding=self.encoding, indent=self.indent, sort_keys=True, **kwargs)
 
     def deserialize(self, s):
         return json.loads(s, encoding=self.encoding)

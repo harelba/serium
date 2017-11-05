@@ -12,7 +12,7 @@ from serium.caseclasses import CaseClass, CaseClassException, CaseClassListType,
 
 
 class A(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int), ('c', int)])
+    CC_TYPES = OrderedDict([('a', int), ('b', int), ('c', int)])
 
     def __init__(self, a, b, c):
         self.a = a
@@ -23,7 +23,7 @@ class A(CaseClass):
 # New version of class A() with a new field, and with default value. Deserialization from an old A() instance
 # will succeed.
 class A2(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int), ('c', int), ('d', str)])
+    CC_TYPES = OrderedDict([('a', int), ('b', int), ('c', int), ('d', str)])
 
     def __init__(self, a, b, c, d='my_new_field_default_value'):
         self.a = a
@@ -35,7 +35,7 @@ class A2(CaseClass):
 # New version of class A() with a new field, but without a default value. Deserialization from an old A() instance
 # will fail (See A2 above)
 class A3(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', int), ('b', int), ('c', int), ('d', str)])
+    CC_TYPES = OrderedDict([('a', int), ('b', int), ('c', int), ('d', str)])
 
     def __init__(self, a, b, c, d):
         self.a = a
@@ -45,7 +45,7 @@ class A3(CaseClass):
 
 
 class B(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('a', str), ('b', str)])
+    CC_TYPES = OrderedDict([('a', str), ('b', str)])
 
     def __init__(self, a, b):
         self.a = a
@@ -53,7 +53,7 @@ class B(CaseClass):
 
 
 class AllNativeTypes(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('b', bool), ('i', int), ('f', float), ('s', str), ('l', long)])
+    CC_TYPES = OrderedDict([('b', bool), ('i', int), ('f', float), ('s', str), ('l', long)])
 
     def __init__(self, b, i, f, s, l):
         self.b = b
@@ -64,7 +64,7 @@ class AllNativeTypes(CaseClass):
 
 
 class S(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('myint', int), ('a_type', A), ('b_type', B)])
+    CC_TYPES = OrderedDict([('myint', int), ('a_type', A), ('b_type', B)])
 
     def __init__(self, myint, a_type, b_type):
         self.myint = myint
@@ -73,14 +73,14 @@ class S(CaseClass):
 
 
 class U(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([('my_unicode_string', unicode)])
+    CC_TYPES = OrderedDict([('my_unicode_string', unicode)])
 
     def __init__(self, my_unicode_string):
         self.my_unicode_string = my_unicode_string
 
 
 class CaseClassWithLists(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('myint', int),
         ('list_of_ints', CaseClassListType(int)),
         ('list_of_Ss', CaseClassListType(S))
@@ -93,7 +93,7 @@ class CaseClassWithLists(CaseClass):
 
 
 class CaseClassWithDict(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('myint', int),
         ('mydict', CaseClassDictType(str, B))
     ])
@@ -104,7 +104,7 @@ class CaseClassWithDict(CaseClass):
 
 
 class CaseClassWithRecursiveReference(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('myint', int),
         ('mystring', str),
         ('child', CaseClassSelfType())
@@ -117,7 +117,7 @@ class CaseClassWithRecursiveReference(CaseClass):
 
 
 class CaseClassWithRecursiveRefInList(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('value', int),
         ('children', CaseClassListType(CaseClassSelfType()))
     ])
@@ -134,7 +134,7 @@ class CaseClassWithoutExpectedTypes(CaseClass):
 
 
 class CaseClassWithUUID(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('u', CaseClassTypeAsString(uuid.UUID))
     ])
 
@@ -660,7 +660,7 @@ class TestBasicTests:
 
 
 class CaseClassSubType1(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('subtype1_field1', int),
         ('subtype1_field2', int)
     ])
@@ -671,7 +671,7 @@ class CaseClassSubType1(CaseClass):
 
 
 class CaseClassSubType2(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('subtype2_field1', int),
         ('subtype2_field2', int)
     ])
@@ -682,7 +682,7 @@ class CaseClassSubType2(CaseClass):
 
 
 class CaseClassSuperType(CaseClass):
-    CASE_CLASS_EXPECTED_TYPES = OrderedDict([
+    CC_TYPES = OrderedDict([
         ('submessage_type', CaseClassSubTypeKey('details')),
         ('details', CaseClassSubTypeValue('submessage_type'))
     ])
