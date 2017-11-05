@@ -653,37 +653,32 @@ class CaseClassEnv(object):
             ## TODO autosupport lists and dicts in cc_*
 
 
-# default_env = CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
-#
-#
-# def cc_to_dict(cc):
-#     return default_env.cc_to_dict(cc)
-#
-#
-# def dict_with_cc_to_dict(d):
-#     return default_env.dict_with_cc_to_dict(d)
-#
-#
-# def cc_to_json_str(cc, **kwargs):
-#     return default_env.cc_to_json_str(cc, **kwargs)
-#
-#
-# def cc_from_json_str(s, cc_type):
-#     return default_env.cc_from_json_str(s, cc_type)
-#
-#
-# def cc_from_dict(d, cc_type, raise_on_empty=True):
-#     return default_env.cc_from_dict(d, cc_type, raise_on_empty)
-#
-#
-# def cc_check(o, cc_type):
-#     return default_env.cc_check(o, cc_type)
-#
-#
-# def cc_set_default_env(serialization_ctx=CaseClassSerializationContext(), deserialization_ctx=CaseClassDeserializationContext(), serialization=CaseClassJsonSerialization()):
-#     global default_env
-#     default_env = CaseClassEnv(serialization_ctx, deserialization_ctx, serialization)
-#
-
 def create_default_env():
     return CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
+
+default_env = create_default_env()
+
+
+def cc_to_dict(cc):
+    return default_env.cc_to_dict(cc)
+
+
+def dict_with_cc_to_dict(d):
+    return default_env.dict_with_cc_to_dict(d)
+
+
+def cc_to_json_str(cc, **kwargs):
+    return default_env.cc_to_json_str(cc, **kwargs)
+
+
+def cc_from_json_str(s, cc_type):
+    return default_env.cc_from_json_str(s, cc_type)
+
+
+def cc_from_dict(d, cc_type, raise_on_empty=True):
+    return default_env.cc_from_dict(d, cc_type, raise_on_empty)
+
+
+def cc_check(o, cc_type):
+    return default_env.cc_check(o, cc_type)
+
