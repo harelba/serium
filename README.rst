@@ -26,7 +26,7 @@ Basic Example
 
 .. code:: python
 
-    BASIC_EXAMPLE_START
+    # BASIC_EXAMPLE_START
 
     from collections import OrderedDict
     from uuid import uuid4
@@ -101,7 +101,7 @@ Data Migration Example
 
 .. code:: python
 
-    DATA_MIGRATION_EXAMPLE_START
+    # DATA_MIGRATION_EXAMPLE_START
 
     # Let's assume that we're storing this (and other similar) jsons somewhere over time.
 

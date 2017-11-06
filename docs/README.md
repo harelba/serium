@@ -14,9 +14,9 @@ While already being used in one production setting, the library is still in alph
 
 # Basic Example
 
-[embedmd]:# (./examples.py python /BASIC_EXAMPLE_START/ /BASIC_EXAMPLE_END/)
+[embedmd]:# (./examples.py python /# BASIC_EXAMPLE_START/ /# BASIC_EXAMPLE_END/)
 
 # Data Migration Example
 
-[embedmd]:# (./examples.py python /DATA_MIGRATION_EXAMPLE_START/ /DATA_MIGRATION_EXAMPLE_END/)
+[embedmd]:# (./examples.py python /# DATA_MIGRATION_EXAMPLE_START/ /# DATA_MIGRATION_EXAMPLE_END/)
 
