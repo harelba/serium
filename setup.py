@@ -42,7 +42,7 @@ setup(
         'Programming Language :: Python :: 2.7'
     ],
 
-    keywords='serium case-classes serialization data-migration data-structures strict-typing',
+    keywords='serium case-classes serialization data-migration data-structures strict-typing schema-evolution schema',
 
     packages=find_packages(exclude=['contrib', 'docs', 'test']),
 
