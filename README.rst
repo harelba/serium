@@ -313,7 +313,7 @@ Advanced serialization and deserialization control
 The module-level functions in ``serium.caseclasses`` provide a simple
 out-of-the-box experience, with several behaviour defaults regarding
 controlling the serde process. When you need more control over these,
-you can create a ``CaseClassEnv`` instance and run the same functions
+you can create a ``SeriumEnv`` instance and run the same functions
 defined above, as methods of this instance. Here’s an example:
 
 .. code:: python
