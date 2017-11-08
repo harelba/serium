@@ -9,17 +9,28 @@ This initial implementation of the library is in python, which is dynamically ty
 
 ## Main Features
 * Strictly typed, immutable, nested case classes (including recursive definitions)
-* Support for case class version management and schema evolution inside the codebase
+* Support for case class version management and powerful schema evolution inside the codebase
 * Inherent serialization capabilities (currently json only)
 * On-the-fly data migration on read
+* Support for subtypes - A method for mimicking inheritance in serialized data. Supertype can contain a "selector field" which denotes the actual type of another field. 
 
-The library is currently optimized mainly for ease of development and iteration, and for decoupling between the developer's work and devops work. The main design guideline is that in many cases, the cost of more CPU/RAM is small relative to the cost of slow development processes. 
+## Design assumptions
+* CPU/Memory is cheaper than developer time and time-to-market of new features
+* Decoupling feature release from any devops work is a good thing
+* Most serialization formats only provide for "protocol-level evolution", not supporting logicl evolution of the data strcutures, which is needed many times
+* The codebase and the programming language can serve as an accurate "distributed schema repository", taking advantage of standard code management tools
+
+Due to these design assumptions, the library is currently optimized mainly for ease of development and iteration, and for decoupling between the developer's work and devops work. Obviously, once the concepts stabilize enough, speed/space optimizations will get into focus.
 
 ## Future plans
 * At least one strictly-typed implementation (e.g. Scala)
 * Other serialization formats
-* Higher-level constraints on the data as part of the type definitions (e.g. valid-url, positive-value, not-empty, etc.)
+* Higher-level types (e.g. url, phone-number, etc.)
+* Higher-level constraints on the data as part of the type definitions (e.g. valid-url, positive-value, not-empty, in-range, etc.)
 * Create IDL or reuse existing IDL such as protobuf
+* Typed enums (currently just regular strings)
+* Typed timestamps (currently just ints or longs)
+* Less verbose syntax
 
 # Library Status
 While already being used in one production setting, the library is still considered to be in alpha status. Any feedback regarding the concept and the direction this needs to take will be greatly appreciated.
@@ -37,7 +48,7 @@ While already being used in one production setting, the library is still conside
 
 # Reference for case class definitions
 
-* Case class definition:
+## Basic structure for defining a case class
 ```python
 class MyClass(CaseClass):
 	CC_TYPES = OrderedDict([ <pairs of field-name/field-type> ])
@@ -46,7 +57,58 @@ class MyClass(CaseClass):
 		<old-version-number>: lambda old: <construct a new MyClass using old>,
 		...
 	}
+	def __init__(self,<field-names>):
+		self.field_name1 = field_name1
+		...
 ```
 
-* 
-	
+## Supported types
+```python
+	from serium.types import cc_self_type, cc_list, cc_dict, cc_decimal, cc_uuid
+	...
+	CC_TYPES = OrderedDict([
+		('my_int',int),
+		('my_long',long),
+		('my_float',float),
+		('my_bool',bool),
+		('my_str',str),	
+		('my_unicode',unicode),	
+		('my_uuid',cc_uuid),
+		('my_decimal',cc_decimal),
+		('my_raw_dict',dict),
+		('my_list_of_ints',cc_list(int)),
+		('my_typed_dict',cc_dict(str,int)),
+		('my_sibling_node',cc_self_type),
+		('my_other_case_class',<case-class-name>)
+	])
+
+## Basic conversion to/from dict
+* `cc_to_dict(x)` - Convert case class instance `x` to a dictionary
+* `cc_from_dict(d,cc_type)` - Convert dict `d` back into a case class of type `cc_type`
+
+## Basic conversion to/from json string
+* `cc_to_json_str(x)` - Conver case class instance `x` to a json string
+* `cc_from_json_str(s, cc_type)` - Convert json string `s` back into a case class instance of type `cc_type`
+
+## Simple type checking
+* `cc_check(x, cc_type)` - Throws an exception if case class instance x is not of type `cc_type`
+
+## Advanced serialization and deserialization control
+The module-level functions in `serium.caseclasses` provide a simple out-of-the-box experience, with several behaviour defaults regarding controlling the serde process. When you need more control over these, you can create a `CaseClassEnv` instance and run the same functions defined above, as methods of this instance. Here's an example:
+```python
+from serium.caseclasses import CaseClassEnv
+
+env = CaseClassEnv(...)
+
+env.cc_from_dict(...)
+env.cc_to_json_str(...) 
+```
+
+CaseClassEnv gets three parameters:
+* `serialization_ctx` - An instance of `CaseClassSerializationContext`. Params:
+  * `force_unversioned_serialization` - A boolean flag. When true, the serialized output will be plain - It will not include versioning info. This can be used in order to send data to external systems, for example, which cann't tolerate extra fields. Default to False, meaning that output will include versioning info.
+* `deserialization_ctx` - An instance of `CaseClassDeserializationContext`. Params:
+  * `fail_on_unversioned_data` - A boolean, defaults to True, which means that if there's no version information in the serialized data, an exception will be thrown. If set to False, the "current version" case class will be used in order to attempt to deserialize the data without errors.
+  * `fail_on_incompatible_types` - A boolean, defaults to True. When set to False, the deserializer will attempt to forcefully deserialize a non-matching type into the requested type. This will succeed only if both types happen to share the same field names and types
+  * `external_version_provider_func` - A function `f(cc_type, d)` where cc_type is a case class type, and d is a dictionary. The function should return a version number for the relevant params. This allows to effectively inject specific versions during deserialization, whenever they don't exist in the data itself (e.g. data from external system, initial migration to this library, etc.).
+
