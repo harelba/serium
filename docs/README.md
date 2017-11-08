@@ -95,7 +95,7 @@ class MyClass(CaseClass):
 * `cc_check(x, cc_type)` - Throws an exception if case class instance x is not of type `cc_type`
 
 ## Advanced serialization and deserialization control
-The module-level functions in `serium.caseclasses` provide a simple out-of-the-box experience, with several behaviour defaults regarding controlling the serde process. When you need more control over these, you can create a `CaseClassEnv` instance and run the same functions defined above, as methods of this instance. Here's an example:
+The module-level functions in `serium.caseclasses` provide a simple out-of-the-box experience, with several behaviour defaults regarding controlling the serde process. When you need more control over these, you can create a `SeriumEnv` instance and run the same functions defined above, as methods of this instance. Here's an example:
 ```python
 from serium.caseclasses import SeriumEnv
 
