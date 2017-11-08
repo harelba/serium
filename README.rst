@@ -325,14 +325,18 @@ defined above, as methods of this instance. Here’s an example:
     env.cc_from_dict(...)
     env.cc_to_json_str(...) 
 
-CaseClassEnv gets three parameters: \* ``serialization_ctx`` - An
-instance of ``CaseClassSerializationContext``. Params:
+CaseClassEnv gets three parameters:
 
--  ``force_unversioned_serialization`` - A boolean flag. When true, the
-   serialized output will be plain - It will not include versioning
-   info. This can be used in order to send data to external systems, for
-   example, which cann’t tolerate extra fields. Default to False,
-   meaning that output will include versioning info.
+-  ``serialization_ctx`` - An instance of
+   ``CaseClassSerializationContext``. Params:
+
+   -  ``force_unversioned_serialization`` - A boolean flag. When true,
+      the serialized output will be plain - It will not include
+      versioning info. This can be used in order to send data to
+      external systems, for example, which cann’t tolerate extra fields.
+      Default to False, meaning that output will include versioning
+      info.
+
 -  ``deserialization_ctx`` - An instance of
    ``CaseClassDeserializationContext``. Params:
 
