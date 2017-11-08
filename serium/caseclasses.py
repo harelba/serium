@@ -597,7 +597,7 @@ class CaseClassDeserializationContext(object):
         self.external_version_provider_func = external_version_provider_func
 
 
-class CaseClassEnv(object):
+class SeriumEnv(object):
     def __init__(self, serialization_ctx, deserialization_ctx, serialization):
         self.serialization_ctx = serialization_ctx
         self.deserialization_ctx = deserialization_ctx
@@ -654,7 +654,7 @@ class CaseClassEnv(object):
 
 
 def create_default_env():
-    return CaseClassEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
+    return SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
 
 default_env = create_default_env()
 

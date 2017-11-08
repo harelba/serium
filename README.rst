@@ -318,14 +318,14 @@ defined above, as methods of this instance. Here’s an example:
 
 .. code:: python
 
-    from serium.caseclasses import CaseClassEnv
+    from serium.caseclasses import SeriumEnv
 
-    env = CaseClassEnv(...)
+    env = SeriumEnv(...)
 
     env.cc_from_dict(...)
     env.cc_to_json_str(...) 
 
-CaseClassEnv gets three parameters:
+SeriumEnv gets three parameters:
 
 -  ``serialization_ctx`` - An instance of
    ``CaseClassSerializationContext``. Params:
