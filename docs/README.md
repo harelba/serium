@@ -81,6 +81,7 @@ class MyClass(CaseClass):
 		('my_sibling_node',cc_self_type),
 		('my_other_case_class',<case-class-name>)
 	])
+```
 
 ## Basic conversion to/from dict
 * `cc_to_dict(x)` - Convert case class instance `x` to a dictionary
