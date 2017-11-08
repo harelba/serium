@@ -326,24 +326,30 @@ defined above, as methods of this instance. Here’s an example:
     env.cc_to_json_str(...) 
 
 CaseClassEnv gets three parameters: \* ``serialization_ctx`` - An
-instance of ``CaseClassSerializationContext``. Params: \*
-``force_unversioned_serialization`` - A boolean flag. When true, the
-serialized output will be plain - It will not include versioning info.
-This can be used in order to send data to external systems, for example,
-which cann’t tolerate extra fields. Default to False, meaning that
-output will include versioning info. \* ``deserialization_ctx`` - An
-instance of ``CaseClassDeserializationContext``. Params: \*
-``fail_on_unversioned_data`` - A boolean, defaults to True, which means
-that if there’s no version information in the serialized data, an
-exception will be thrown. If set to False, the “current version” case
-class will be used in order to attempt to deserialize the data without
-errors. \* ``fail_on_incompatible_types`` - A boolean, defaults to True.
-When set to False, the deserializer will attempt to forcefully
-deserialize a non-matching type into the requested type. This will
-succeed only if both types happen to share the same field names and
-types \* ``external_version_provider_func`` - A function
-``f(cc_type, d)`` where cc_type is a case class type, and d is a
-dictionary. The function should return a version number for the relevant
-params. This allows to effectively inject specific versions during
-deserialization, whenever they don’t exist in the data itself (e.g. data
-from external system, initial migration to this library, etc.).
+instance of ``CaseClassSerializationContext``. Params:
+
+-  ``force_unversioned_serialization`` - A boolean flag. When true, the
+   serialized output will be plain - It will not include versioning
+   info. This can be used in order to send data to external systems, for
+   example, which cann’t tolerate extra fields. Default to False,
+   meaning that output will include versioning info.
+-  ``deserialization_ctx`` - An instance of
+   ``CaseClassDeserializationContext``. Params:
+
+   -  ``fail_on_unversioned_data`` - A boolean, defaults to True, which
+      means that if there’s no version information in the serialized
+      data, an exception will be thrown. If set to False, the “current
+      version” case class will be used in order to attempt to
+      deserialize the data without errors.
+   -  ``fail_on_incompatible_types`` - A boolean, defaults to True. When
+      set to False, the deserializer will attempt to forcefully
+      deserialize a non-matching type into the requested type. This will
+      succeed only if both types happen to share the same field names
+      and types
+   -  ``external_version_provider_func`` - A function ``f(cc_type, d)``
+      where cc_type is a case class type, and d is a dictionary. The
+      function should return a version number for the relevant params.
+      This allows to effectively inject specific versions during
+      deserialization, whenever they don’t exist in the data itself
+      (e.g. data from external system, initial migration to this
+      library, etc.).
