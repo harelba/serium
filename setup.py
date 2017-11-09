@@ -24,6 +24,7 @@ setup(
     long_description=long_description,
 
     url='https://github.com/harelba/serium',
+    download_url='https://github.com/harelba/serium/archive/0.1.0.tar.gz',
 
     author='Harel Ben-Attia',
     author_email='harelba@gmail.com',
@@ -34,21 +35,21 @@ setup(
         'Development Status :: 3 - Alpha',
 
         'Intended Audience :: Developers',
-        'Topic :: Software Development :: Libraries :: Python Modules'
+        'Topic :: Software Development :: Libraries :: Python Modules',
 
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache Software License',
 
         'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7'
     ],
 
     keywords='serium case-classes serialization data-migration data-structures strict-typing schema-evolution schema',
 
-    packages=find_packages(exclude=['contrib', 'docs', 'test']),
-
-    #   py_modules=["my_module"],
+    packages=find_packages(exclude=['docs', 'test_*']),
 
     install_requires=[],
+    python_requires='>=2.6,<3',
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,

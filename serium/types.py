@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from serium.caseclasses import CaseClassTypeAsString, CaseClassListType
+from serium.caseclasses import CaseClassTypeAsString, CaseClassListType, CaseClassSelfType
 from uuid import UUID
 from decimal import Decimal
 
