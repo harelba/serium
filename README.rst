@@ -2,12 +2,28 @@ serium
 ======
 
 A serialization library that inherently provides resiliency to data
-structure evolution over time
+structure evolution over time.
 
 This kind of resiliency is achieved by providing case classes that are
 inherently serializable in a way that preserves version information, and
-seamlessly migrates old data structures on read (e.g. during
-deserialization).
+seamlessly migrating old data structures on-the-fly while performing
+deserialization.
+
+The approach that this library takes towards data structure evolution is
+different than many other serialization formats. Instead of defining
+evolution at the protocol-level (e.g. adding new fields which might be
+empty, deprecating fields, converting types, etc.), it defines evolution
+at the domain-level. Developers explicitly define conversion functions
+between versions, and the infrastructure uses these function in order to
+provide the application code with the current version of each object.
+This approach allows to change the data structures according to real
+bussiness/development needs, and not be limited to protocol-level
+changes.
+
+A related concept to this approach is that the codebase serves as the
+“schema repository”, holding the structures of all “live versions”.
+This, combined with the conversion functions, allows to manage the
+evolution of the data using standard code tools and practices.
 
 This initial implementation of the library is in python, which is
 dynamically typed. This required creating full support for strictly
@@ -25,7 +41,8 @@ Main Features
 -  On-the-fly data migration on read
 -  Support for subtypes - A method for mimicking inheritance in
    serialized data. Supertype can contain a “selector field” which
-   denotes the actual type of another field.
+   denotes the actual type of another field, fully integrating with the
+   version management capabilities of the library.
 
 Design assumptions
 ------------------
