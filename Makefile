@@ -11,5 +11,5 @@ create-doc:
 	pandoc --from=markdown --to=rst --output=./README.rst docs/.README.generated
 
 upload-to-testpypy:
-	setup.py bdist_wheel
-	twine upload --repository testpypi dist/*
+	./setup.py bdist_wheel
+	twine upload --repository pypitest dist/*
