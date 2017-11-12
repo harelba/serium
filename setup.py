@@ -18,13 +18,13 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.1.1',
+    version='0.1.3',
 
     description=description,
     long_description=long_description,
 
     url='https://github.com/harelba/serium',
-    download_url='https://github.com/harelba/serium/archive/0.1.1.tar.gz',
+    download_url='https://github.com/harelba/serium/archive/0.1.3.tar.gz',
 
     author='Harel Ben-Attia',
     author_email='harelba@gmail.com',
@@ -41,7 +41,10 @@ setup(
 
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7'
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5'
     ],
 
     keywords='serium case-classes serialization data-migration data-structures strict-typing schema-evolution schema',
@@ -49,7 +52,7 @@ setup(
     packages=find_packages(exclude=['docs', 'test_*']),
 
     install_requires=[],
-    python_requires='>=2.6,<3',
+    python_requires='>=2.6,<4',
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,

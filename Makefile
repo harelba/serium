@@ -2,6 +2,7 @@ init:
 	pip install -r requirements.txt
 	brew install pandoc || true
 	go get github.com/campoy/embedmd
+	pip install tox tox-pyenv wheel twine
 
 test:
 	pytest test_serium

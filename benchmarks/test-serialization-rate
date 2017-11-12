@@ -33,7 +33,7 @@ def run(COUNT):
 
 t1 = time.time()
 
-COUNT = 20000
+COUNT = 50000
 
 if len(sys.argv) > 1 and sys.argv[1] == '-p':
     import cProfile
