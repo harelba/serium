@@ -14,14 +14,14 @@ different than many other serialization formats. Instead of defining
 evolution at the protocol-level (e.g. adding new fields which might be
 empty, deprecating fields, converting types, etc.), it defines evolution
 at the domain-level. Developers explicitly define conversion functions
-between versions, and the infrastructure uses these function in order to
-provide the application code with the current version of each object.
+between versions, and the infrastructure uses these functions in order
+to provide the application code with the current version of each object.
 This approach allows to change the data structures according to real
 bussiness/development needs, and not be limited to protocol-level
 changes.
 
-A related concept to this approach is that the codebase serves as the
-“schema repository”, holding the structures of all “live versions”.
+A related concept to this approach is that the codebase itself acts as
+the “schema repository”, holding the structures of all “live versions”.
 This, combined with the conversion functions, allows to manage the
 evolution of the data using standard code tools and practices.
 
@@ -49,10 +49,10 @@ Design assumptions
 
 -  CPU/Memory is cheaper than developer time and time-to-market of new
    features
--  Decoupling feature release from any devops work is a good thing
--  Most serialization formats only provide for “protocol-level
-   evolution”, not supporting logicl evolution of the data strcutures,
-   which is needed many times
+-  Decoupling feature release from any maintenance/migration work is a
+   good thing
+-  Logicl evolution of the data strcutures is required in many real
+   world use cases
 -  The codebase and the programming language can serve as an accurate
    “distributed schema repository”, taking advantage of standard code
    management tools
