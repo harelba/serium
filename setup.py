@@ -18,13 +18,13 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.1.6',
+    version='0.1.7',
 
     description=description,
     long_description=long_description,
 
     url='https://github.com/harelba/serium',
-    download_url='https://github.com/harelba/serium/archive/0.1.6.tar.gz',
+    download_url='https://github.com/harelba/serium/archive/0.1.7.tar.gz',
 
     author='Harel Ben-Attia',
     author_email='harelba@gmail.com',
@@ -42,6 +42,7 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 2 :: Only'
     ],
 
     keywords='serium case-classes serialization data-migration data-structures strict-typing schema-evolution schema',

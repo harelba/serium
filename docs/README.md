@@ -131,5 +131,7 @@ Run `make create-doc` to compile docs/README.md into README.rst (Don't forget to
 
 Run `make test` to run tests.
 
-Run `make upload-to-testpypy` to upload to test pypi repository. Note that you'll have to change the versions in setup.py every time you do an upload, since it cannot override existing versions.
+Run `make prepare-dist` to Prepare the distribution packages. Make sure to change the versions in setup.py before doing it.
+
+Run `make upload-to-testpypy` to upload to the *test* pypi repository. 
 

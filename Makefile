@@ -11,7 +11,10 @@ create-doc:
 	embedmd docs/README.md > docs/.README.generated
 	pandoc --from=markdown --to=rst --output=./README.rst docs/.README.generated
 
-upload-to-testpypy:
+prepare-dist:
 	rm -vf ./dist/*.whl
+	./setup.py sdist
 	./setup.py bdist_wheel
+
+upload-to-testpypy:
 	twine upload --repository pypitest dist/*
