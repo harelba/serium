@@ -5,10 +5,15 @@ from collections import OrderedDict
 import pytest
 
 import sys,os
+
 sys.path.insert(0, os.path.join(sys.path[0], '..'))
 
-from serium.caseclasses import CaseClass, CaseClassException, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
+from serium.caseclasses import CaseClass, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
     CaseClassSubTypeValue, CaseClassTypeAsString, CaseClassDeserializationContext, create_default_env
+from serium.cc_exceptions import CaseClassImmutabilityException, CaseClassUnexpectedFieldException, \
+    CaseClassDefinitionException, CaseClassUnexpectedFieldTypeException, CaseClassUnknownFieldException, \
+    IncompatibleTypesCaseClassException, CaseClassTypeAsStringException, CaseClassCannotBeFoundException, \
+    CaseClassCreationException, MissingVersionDataCaseClassException, CaseClassSubTypeCannotBeNullException
 
 
 class A(CaseClass):
@@ -174,16 +179,16 @@ class TestBasicTests:
 
     def test_cannot_update_value(self):
         a = A(100, 200, 300)
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassImmutabilityException):
             a.a = 500
 
     def test_cannot_access_undefined_value(self):
         a = A(100, 200, 300)
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassUnexpectedFieldException):
             myvalue = a.unknown_field
 
     def test_missing_expected_types(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassDefinitionException):
             a = CaseClassWithoutExpectedTypes(100, 200)
 
     def test_equality(self):
@@ -237,11 +242,11 @@ class TestBasicTests:
         assert m[c] == 300
 
     def test_exception_on_wrong_native_type(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassUnexpectedFieldTypeException):
             s = S('a', A(1, 2, 3), B('4', '5'))
 
     def test_exception_on_wrong_cc_type(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassUnexpectedFieldTypeException):
             s = S(42, B('4', '5'), B('4', '5'))
 
     def test_nested_hash_identical(self):
@@ -554,7 +559,7 @@ class TestBasicTests:
         assert a2.c == 3
 
     def test_copy_with_unknown_params_raises(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassUnknownFieldException):
             a1 = A(1, 2, 3)
             a2 = a1.copy(d=100)
 
@@ -628,7 +633,7 @@ class TestBasicTests:
 
         serialized_a1 = env.cc_to_json_str(a1)
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(IncompatibleTypesCaseClassException):
             deserialized_a1_by_a3 = env.cc_from_json_str(serialized_a1, A3)
 
     def test_cc_type_as_string(self, env):
@@ -639,13 +644,13 @@ class TestBasicTests:
         assert new_u == u
 
     def test_cc_type_as_string__type_check_fails(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassUnexpectedFieldTypeException):
             u = CaseClassWithUUID('1212121')
 
     def test_cc_type_as_string__type_check_fails_on_deserialization(self, env):
-        j = """{ "u" : 2000 }"""
+        j = """{ "u" : 2000 , "_ccvt": "CaseClassWithUUID/1" }"""
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassTypeAsStringException):
             new_u = env.cc_from_json_str(j, CaseClassWithUUID)
 
     def test_cc_type_as_string__deserialization_succeeds(self):
@@ -700,11 +705,11 @@ class TestSubTypingTests:
         assert new_supertype == supertype
 
     def test_creation_of_wrong_subtype(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassUnexpectedFieldTypeException):
             supertype = CaseClassSuperType('CaseClassSubType1', CaseClassSubType2(1000, 2000))
 
     def test_creation_of_unknown_subtype(self):
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassCannotBeFoundException):
             supertype = CaseClassSuperType('UnknownSubType', CaseClassSubType1(1000, 2000))
 
     def test_deserialization_of_known_subtype(self, env):
@@ -727,11 +732,13 @@ class TestSubTypingTests:
             "submessage_type": "CaseClassSubType1",
             "details": {
                 "subtype2_field1": 100,
-                "subtype2_field2": 200
-            }
+                "subtype2_field2": 200,
+                "_ccvt": "CaseClassSubType2/1"
+            },
+            "_ccvt": "CaseClassSuperType/1"
         }
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(IncompatibleTypesCaseClassException):
             st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
     def test_deserialization_of_unknown_subtype(self, env):
@@ -739,31 +746,50 @@ class TestSubTypingTests:
             "submessage_type": "UnknownSubType",
             "details": {
                 "subtype2_field1": 100,
-                "subtype2_field2": 200
-            }
+                "subtype2_field2": 200,
+                "_ccvt": "CaseClassSubType2/1"
+            },
+            "_ccvt": "CaseClassSuperType/1"
         }
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassCannotBeFoundException):
             st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
     def test_deserialization_with_missing_subtype_field(self, env):
         j = {
-            "submessage_type": "CaseClassSubType1"
+            "submessage_type": "CaseClassSubType1",
+            "_ccvt": "CaseClassSuperType/1"
         }
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassCreationException):
             st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
     def test_deserialization_with_empty_subtype_field(self, env):
         j = {
             "submessage_type": "CaseClassSubType1",
-            "details": {}
+            "details": {},
+            "_ccvt": "CaseClassSuperType/1"
         }
-        with pytest.raises(CaseClassException):
+        with pytest.raises(MissingVersionDataCaseClassException):
             st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
 
-    def test_deserialization_with_null_subtype_field(self, env):
+    def test_deserialization_with_null_subtype_field__with_failure_disabled(self):
+        env = create_default_env()
+        env.deserialization_ctx=CaseClassDeserializationContext(fail_on_null_subtypes=False)
+
         j = {
             "submessage_type": "CaseClassSubType1",
-            "details": None
+            "details": None,
+            "_ccvt": "CaseClassSuperType/1"
         }
-        with pytest.raises(CaseClassException):
+        st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)
+
+    def test_deserialization_with_null_subtype_field__with_failure_enabled(self):
+        env = create_default_env()
+        env.deserialization_ctx=CaseClassDeserializationContext(fail_on_null_subtypes=True)
+
+        j = {
+            "submessage_type": "CaseClassSubType1",
+            "details": None,
+            "_ccvt": "CaseClassSuperType/1"
+        }
+        with pytest.raises(CaseClassSubTypeCannotBeNullException):
             st = env.cc_from_json_str(json.dumps(j), CaseClassSuperType)

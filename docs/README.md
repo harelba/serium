@@ -31,6 +31,7 @@ Due to these design assumptions, the library is currently optimized mainly for e
 * Other serialization formats
 * Higher-level types (e.g. url, phone-number, etc.)
 * Higher-level constraints on the data as part of the type definitions (e.g. valid-url, positive-value, not-empty, in-range, etc.)
+* Dynamic search scope of subtypes
 * Create IDL or reuse existing IDL such as protobuf
 * Typed enums (currently just regular strings)
 * Typed timestamps (currently just ints or longs)

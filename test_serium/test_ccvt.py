@@ -6,10 +6,15 @@ from collections import OrderedDict
 import pytest
 
 import sys,os
+
+from serium.cc_exceptions import CaseClassInvalidVersionedTypeException, MissingVersionDataCaseClassException, \
+    IncompatibleTypesCaseClassException, CaseClassCannotBeFoundException, VersionNotFoundCaseClassException, \
+    MigrationPathNotFoundCaseClassException
+
 sys.path.insert(0, os.path.join(sys.path[0], '..'))
 
-from serium.caseclasses import CaseClass, CaseClassException, CaseClassSubTypeKey, CaseClassSubTypeValue, CaseClassListType, \
-    CaseClassSelfType, VersionNotFoundCaseClassException, MissingVersionDataCaseClassException, IncompatibleTypesCaseClassException, MigrationPathNotFoundCaseClassException, default_to_version_1_func, \
+from serium.caseclasses import CaseClass, CaseClassSubTypeKey, CaseClassSubTypeValue, CaseClassListType, \
+    CaseClassSelfType, default_to_version_1_func, \
     CaseClassVersionedType, create_default_env, CaseClassSerializationContext, CaseClassDeserializationContext
 
 
@@ -71,19 +76,19 @@ class TestCCVTTests:
     def test_deserialization_failure_when_invalid_ccvt(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass'}
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassInvalidVersionedTypeException):
             o = env.cc_from_dict(serialized, MyClass)
 
     def test_deserialization_failure_when_invalid_version_in_ccvt(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass/-3'}
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassInvalidVersionedTypeException):
             o = env.cc_from_dict(serialized, MyClass)
 
     def test_deserialization_failure_when_invalid_version_in_ccvt2(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'MyClass/aaa'}
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassInvalidVersionedTypeException):
             o = env.cc_from_dict(serialized, MyClass)
 
     def test_deserialization_failure_when_ccvt_missing(self, env):
@@ -95,12 +100,12 @@ class TestCCVTTests:
 
     def test_deserialization_failure_of_different_class(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'AnotherClass/1'}
-        with pytest.raises(CaseClassException):
+        with pytest.raises(IncompatibleTypesCaseClassException):
             o = env.cc_from_dict(serialized, MyClass)
 
     def test_deserialization_failure_of_unknown_class(self, env):
         serialized = {'y': 'str1', 'x': 100, '_ccvt': 'UnknownClass/1'}
-        with pytest.raises(CaseClassException):
+        with pytest.raises(CaseClassCannotBeFoundException):
             o = env.cc_from_dict(serialized, MyClass)
 
     def test_nested_serialization2(self, env):
@@ -122,11 +127,6 @@ class TestCCVTTests:
             o = env.cc_from_dict(serialized, MyClass)
         assert str(cm.value.ccvt) == 'AnotherClass/1'
         assert str(cm.value.self_vt) == 'MyClass/5'
-
-    def test_deserialization_failure_of_unknown_class_with_ignored_versioning(self, env):
-        serialized = {'y': 'str1', 'x': 100, '_ccvt': 'UnknownClass/1'}
-        with pytest.raises(CaseClassException):
-            o = env.cc_from_dict(serialized, MyClass)
 
 
 class SuperType(CaseClass):
@@ -212,7 +212,7 @@ class TestCCVTMigrationOnRead:
     def test_failure_to_migrate_on_nonexisting_version(self, env):
         ser_a = """{ "x": 100, "y": 2001 , "_ccvt": "A/4" }"""
 
-        with pytest.raises(CaseClassException):
+        with pytest.raises(VersionNotFoundCaseClassException):
             a_v4 = env.cc_from_json_str(ser_a, A)
 
     def test_non_migration(self, env):
