@@ -160,6 +160,30 @@ Basic Example
     }
     '''
 
+    # You can notice two things:
+    # * There's a field called _ccvt in each level, storing the what is called a "versioned type".
+    # * The book_id has been serialized into a string. This is accomplished by the cc_uuid type, which essentially states that this is a UUID value when in memory, but has a string representation when serialized.
+
+    # Let's deserialize this string back into an object
+    new_book_instance = cc_from_json_str(serialized_book, Book)
+    print new_book_instance
+    '''
+    Book(book_id=UUID('c9814b3f-fea0-4494-a828-0d66b50336c1'),title=u'A tale of Love and Darkness',author=Author(author_id=500,name=u'Amos Oz'))
+    '''
+
+    # The variable new_book_instance now contains a Book instance with the proper info. Notice that book_id is a UUID again, and that author has been serialized into an object as well.
+
+    # One last thing to notice is that the string representation of the case classes is "executable". This means that you can copy-paste the output as code, and recreate the relevant object.
+
+    ## Immutability
+    # Case classes are immutable, meaning that once created, you cannot change any of the fields, or recreate new fields. Trying to do so will cause an exception. In order to modify an instance, use the copy() method on the case class, and pass keyword arguments with the new values
+    modified_book = b.copy(title=u'A new title')
+    print modified_book
+    '''
+    Book(book_id=UUID('f0115f3b-d8e8-4424-97bd-6541323b3427'),title=u'A new title',author=Author(author_id=500,name=u'Amos Oz'))
+    '''
+
+
     # BASIC_EXAMPLE_END
 
 Data Migration Example
