@@ -161,7 +161,7 @@ Basic Example
     '''
 
     # You can notice two things:
-    # * There's a field called _ccvt in each level, storing the what is called a "versioned type".
+    # * There's a field called _ccvt in each level, storing the "versioned type" of the instance. This will allow automatic migration, as we'll see later on. Notice that that library can provide "pure serialization of case classes" as well, to support writing/sending to legacy systems. See SeriumEnv in the docs for details.
     # * The book_id has been serialized into a string. This is accomplished by the cc_uuid type, which essentially states that this is a UUID value when in memory, but has a string representation when serialized.
 
     # Let's deserialize this string back into an object
