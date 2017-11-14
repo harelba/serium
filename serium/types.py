@@ -3,6 +3,8 @@
 from uuid import UUID
 from decimal import Decimal
 
+__all__ = ['cc_uuid', 'cc_decimal', 'cc_self_type', 'cc_list', 'cc_dict', 'cc_subtype_key', 'cc_subtype_value', 'cc_type_as_string']
+
 
 class CaseClassListType(object):
     def __init__(self, element_type):
@@ -82,3 +84,15 @@ def cc_list(t):
 
 def cc_dict(kt, vt):
     return CaseClassDictType(kt, vt)
+
+
+def cc_subtype_key(value_field_name):
+    return CaseClassSubTypeKey(value_field_name)
+
+
+def cc_subtype_value(key_field_name):
+    return CaseClassSubTypeValue(key_field_name)
+
+
+def cc_type_as_string(t):
+    return CaseClassTypeAsString(t)

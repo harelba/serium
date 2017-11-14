@@ -6,10 +6,11 @@ import pytest
 
 import sys,os
 
+# This needs to come first, before any serium imports
 sys.path.insert(0, os.path.join(sys.path[0], '..'))
 
-from serium.caseclasses import CaseClass, CaseClassListType, CaseClassDictType, CaseClassSelfType, CaseClassSubTypeKey, \
-    CaseClassSubTypeValue, CaseClassTypeAsString, CaseClassDeserializationContext, create_default_env
+from serium.caseclasses import CaseClass, CaseClassDeserializationContext, create_default_env
+from serium.types import cc_list, cc_dict, cc_self_type, cc_type_as_string, cc_subtype_key, cc_subtype_value
 from serium.cc_exceptions import CaseClassImmutabilityException, CaseClassUnexpectedFieldException, \
     CaseClassDefinitionException, CaseClassUnexpectedFieldTypeException, CaseClassUnknownFieldException, \
     IncompatibleTypesCaseClassException, CaseClassTypeAsStringException, CaseClassCannotBeFoundException, \
@@ -87,8 +88,8 @@ class U(CaseClass):
 class CaseClassWithLists(CaseClass):
     CC_TYPES = OrderedDict([
         ('myint', int),
-        ('list_of_ints', CaseClassListType(int)),
-        ('list_of_Ss', CaseClassListType(S))
+        ('list_of_ints', cc_list(int)),
+        ('list_of_Ss', cc_list(S))
     ])
 
     def __init__(self, myint, list_of_ints, list_of_Ss):
@@ -100,7 +101,7 @@ class CaseClassWithLists(CaseClass):
 class CaseClassWithDict(CaseClass):
     CC_TYPES = OrderedDict([
         ('myint', int),
-        ('mydict', CaseClassDictType(str, B))
+        ('mydict', cc_dict(str, B))
     ])
 
     def __init__(self, myint, mydict):
@@ -112,7 +113,7 @@ class CaseClassWithRecursiveReference(CaseClass):
     CC_TYPES = OrderedDict([
         ('myint', int),
         ('mystring', str),
-        ('child', CaseClassSelfType())
+        ('child', cc_self_type)
     ])
 
     def __init__(self, myint, mystring, child):
@@ -124,7 +125,7 @@ class CaseClassWithRecursiveReference(CaseClass):
 class CaseClassWithRecursiveRefInList(CaseClass):
     CC_TYPES = OrderedDict([
         ('value', int),
-        ('children', CaseClassListType(CaseClassSelfType()))
+        ('children', cc_list(cc_self_type))
     ])
 
     def __init__(self, value, children):
@@ -140,7 +141,7 @@ class CaseClassWithoutExpectedTypes(CaseClass):
 
 class CaseClassWithUUID(CaseClass):
     CC_TYPES = OrderedDict([
-        ('u', CaseClassTypeAsString(uuid.UUID))
+        ('u', cc_type_as_string(uuid.UUID))
     ])
 
     def __init__(self, u):
@@ -688,8 +689,8 @@ class CaseClassSubType2(CaseClass):
 
 class CaseClassSuperType(CaseClass):
     CC_TYPES = OrderedDict([
-        ('submessage_type', CaseClassSubTypeKey('details')),
-        ('details', CaseClassSubTypeValue('submessage_type'))
+        ('submessage_type', cc_subtype_key('details')),
+        ('details', cc_subtype_value('submessage_type'))
     ])
 
     def __init__(self, submessage_type, details):

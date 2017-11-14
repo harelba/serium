@@ -5,17 +5,16 @@ from collections import OrderedDict
 
 import pytest
 
-import sys,os
+import sys, os
 
+# This needs to come first, before any serium imports
+sys.path.insert(0, os.path.join(sys.path[0], '..'))
+
+from serium.caseclasses import CaseClass, default_to_version_1_func, CaseClassVersionedType, create_default_env, CaseClassSerializationContext, CaseClassDeserializationContext
+from serium.types import cc_subtype_key, cc_subtype_value, cc_list, cc_self_type
 from serium.cc_exceptions import CaseClassInvalidVersionedTypeException, MissingVersionDataCaseClassException, \
     IncompatibleTypesCaseClassException, CaseClassCannotBeFoundException, VersionNotFoundCaseClassException, \
     MigrationPathNotFoundCaseClassException
-
-sys.path.insert(0, os.path.join(sys.path[0], '..'))
-
-from serium.caseclasses import CaseClass, CaseClassSubTypeKey, CaseClassSubTypeValue, CaseClassListType, \
-    CaseClassSelfType, default_to_version_1_func, \
-    CaseClassVersionedType, create_default_env, CaseClassSerializationContext, CaseClassDeserializationContext
 
 
 @pytest.fixture
@@ -132,8 +131,8 @@ class TestCCVTTests:
 class SuperType(CaseClass):
     CC_TYPES = OrderedDict([
         ('super_value', int),
-        ('request_type', CaseClassSubTypeKey("details")),
-        ('details', CaseClassSubTypeValue('request_type'))
+        ('request_type', cc_subtype_key("details")),
+        ('details', cc_subtype_value('request_type'))
     ])
     CC_V = 1
 
@@ -471,7 +470,7 @@ class TestCCVTNestedMigrationOnReadTests:
 
 
 class MyCaseClassWithList(CaseClass):
-    CC_TYPES = OrderedDict([('l', CaseClassListType(A))])
+    CC_TYPES = OrderedDict([('l', cc_list(A))])
     CC_V = 1
 
     def __init__(self, l):
@@ -581,7 +580,7 @@ class TestCCVTSubTypeTests:
 class MyTreeNode__v1(CaseClass):
     CC_TYPES = OrderedDict([
         ('value', int),
-        ('children', CaseClassListType(CaseClassSelfType()))
+        ('children', cc_list(cc_self_type))
     ])
     CC_V = 1
 
@@ -594,7 +593,7 @@ class MyTreeNode(CaseClass):
     CC_TYPES = OrderedDict([
         ('value', int),
         ('name', str),
-        ('children', CaseClassListType(CaseClassSelfType()))
+        ('children', cc_list(cc_self_type))
     ])
     CC_V = 2
     CC_MIGRATIONS = {
