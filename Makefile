@@ -5,7 +5,7 @@ init:
 	pip install tox tox-pyenv wheel twine
 
 test:
-	pytest test_serium
+	tox
 
 create-doc:
 	embedmd docs/README.md > docs/.README.generated

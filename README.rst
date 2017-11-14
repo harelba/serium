@@ -70,6 +70,7 @@ Future plans
 -  Higher-level types (e.g. url, phone-number, etc.)
 -  Higher-level constraints on the data as part of the type definitions
    (e.g. valid-url, positive-value, not-empty, in-range, etc.)
+-  Dynamic search scope of subtypes
 -  Create IDL or reuse existing IDL such as protobuf
 -  Typed enums (currently just regular strings)
 -  Typed timestamps (currently just ints or longs)
@@ -324,6 +325,7 @@ Supported types
             ('my_list_of_ints',cc_list(int)),
             ('my_typed_dict',cc_dict(str,int)),
             ('my_sibling_node',cc_self_type),
+            ('my_type_as_string',cc_type_as_string(t)),  # Assumes t is a type which can serialize itself to string using str() and deserialize itself from string using a one-parameter constructor. For example, cc_uuid is actualy cc_type_as_string(UUID).
             ('my_other_case_class',<case-class-name>)
         ])
 
@@ -398,3 +400,21 @@ SeriumEnv gets three parameters:
       deserialization, whenever they don’t exist in the data itself
       (e.g. data from external system, initial migration to this
       library, etc.).
+   -  ``fail_on_null_subtypes`` - A boolean denoting whether or not to
+      fail on deserialization if a subtype value field is null. Defaults
+      to False, meaning that null values for subtype object is allowed.
+
+Building
+========
+
+Run ``make init`` after initial checkout.
+
+Run ``make create-doc`` to compile docs/README.md into README.rst (Don’t
+forget to checkin the rst file afterwards). The rst file content becomes
+the pypi long description for the package.
+
+Run ``make test`` to run tests.
+
+Run ``make upload-to-testpypy`` to upload to test pypi repository. Note
+that you’ll have to change the versions in setup.py every time you do an
+upload, since it cannot override existing versions.

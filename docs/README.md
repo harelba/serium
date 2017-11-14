@@ -84,6 +84,7 @@ class MyClass(CaseClass):
 		('my_list_of_ints',cc_list(int)),
 		('my_typed_dict',cc_dict(str,int)),
 		('my_sibling_node',cc_self_type),
+		('my_type_as_string',cc_type_as_string(t)),  # Assumes t is a type which can serialize itself to string using str() and deserialize itself from string using a one-parameter constructor. For example, cc_uuid is actualy cc_type_as_string(UUID).
 		('my_other_case_class',<case-class-name>)
 	])
 ```
@@ -120,4 +121,15 @@ SeriumEnv gets three parameters:
   * `fail_on_unversioned_data` - A boolean, defaults to True, which means that if there's no version information in the serialized data, an exception will be thrown. If set to False, the "current version" case class will be used in order to attempt to deserialize the data without errors.
   * `fail_on_incompatible_types` - A boolean, defaults to True. When set to False, the deserializer will attempt to forcefully deserialize a non-matching type into the requested type. This will succeed only if both types happen to share the same field names and types
   * `external_version_provider_func` - A function `f(cc_type, d)` where cc_type is a case class type, and d is a dictionary. The function should return a version number for the relevant params. This allows to effectively inject specific versions during deserialization, whenever they don't exist in the data itself (e.g. data from external system, initial migration to this library, etc.).
+  * `fail_on_null_subtypes` - A boolean denoting whether or not to fail on deserialization if a subtype value field is null. Defaults to False, meaning that null values for subtype object is allowed.
+
+
+# Building
+Run `make init` after initial checkout.
+
+Run `make create-doc` to compile docs/README.md into README.rst (Don't forget to checkin the rst file afterwards). The rst file content becomes the pypi long description for the package.
+
+Run `make test` to run tests.
+
+Run `make upload-to-testpypy` to upload to test pypi repository. Note that you'll have to change the versions in setup.py every time you do an upload, since it cannot override existing versions.
 
