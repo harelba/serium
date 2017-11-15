@@ -44,13 +44,19 @@ While already being used in one production setting, the library is still conside
 # Installation
 `pip install serium`
 
-# Basic Example
+# Examples
+
+## Basic Example
 
 [embedmd]:# (./examples.py python /# BASIC_EXAMPLE_START/ /# BASIC_EXAMPLE_END/)
 
-# Data Migration Example
+## Data Migration Example
 
 [embedmd]:# (./examples.py python /# DATA_MIGRATION_EXAMPLE_START/ /# DATA_MIGRATION_EXAMPLE_END/)
+
+## Finer control over serialization using SeriumEnv
+
+[embedmd]:# (./examples.py python /# USING_SERIUM_ENV_EXAMPLE_START/ /# USING_SERIUM_ENV_EXAMPLE_END/)
 
 # Reference for case class definitions
 

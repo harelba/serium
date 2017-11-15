@@ -9,6 +9,7 @@ from collections import OrderedDict
 from uuid import uuid4
 
 from serium.caseclasses import CaseClass, cc_to_json_str, cc_from_json_str
+from serium.caseclasses import SeriumEnv, CaseClassSerializationContext, CaseClassDeserializationContext, CaseClassJsonSerialization
 from serium.types import cc_list, cc_uuid
 
 
@@ -64,16 +65,7 @@ b = Book(uuid4(), u'A tale of Love and Darkness', a)
 serialized_book = cc_to_json_str(b)
 print serialized_book
 '''
-{
-  "_ccvt": "Book/1",
-  "author": {
-    "_ccvt": "Author/1",
-    "author_id": 500,
-    "name": "Amos Oz"
-  },
-  "book_id": "1f028cef-0540-4c98-b8f6-c55a3c324c44",
-  "title": "A tale of Love and Darkness"
-}
+{"title": "A tale of Love and Darkness", "_ccvt": "Book/1", "book_id": "e3cb81c0-6555-45e6-8615-85fae4729bf1", "author": {"author_id": 500, "name": "Amos Oz", "_ccvt": "Author/1"}}
 '''
 
 # You can notice two things:
@@ -220,3 +212,37 @@ Book(book_id=UUID('1f028cef-0540-4c98-b8f6-c55a3c324c44'),title=u'A tale of Love
 
 # DATA_MIGRATION_EXAMPLE_END
 
+# USING_SERIUM_ENV_EXAMPLE_START
+
+# Let's see how we can modify the behaviour of serium by using a SeriumEnv. In this 
+# example, we'll just make the json serialization more pretty:
+from serium.caseclasses import cc_pretty_json_serialization, cc_compact_json_serialization
+env = SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), cc_pretty_json_serialization)
+
+# (cc_pretty_json_serialization is just a shortcut for specifying a CaseClassJsonSerialization() 
+#  instance with some standard json-module parameters. You can just create your own instance
+#  any parameters you'd like). 
+# There's also a cc_compact_json_serialization which provides a standard compact json
+# presentation.
+
+# Now let's use the env we created in order to serialize the original book instance b:
+print env.cc_to_json_str(b)
+'''
+{
+  "_ccvt": "Book/1",
+  "author": {
+    "_ccvt": "Author/1",
+    "author_id": 500,
+    "name": "Amos Oz"
+  },
+  "book_id": "c56675d3-10e0-42e9-af9a-b8462c4e1104",
+  "title": "A tale of Love and Darkness"
+}
+'''
+
+# CaseClassSerializationContext and CaseClassDeserializationContext contain additional
+# parameters that can control the ser/de process, mostly related to supporting writing
+# to and reading from other systems which do not support versioning. See the docs
+# for details on each of the params.
+
+# USING_SERIUM_ENV_EXAMPLE_END

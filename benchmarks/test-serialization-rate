@@ -3,7 +3,8 @@
 import sys,os
 sys.path.insert(0, os.path.join(sys.path[0], '..'))
 
-from serium.caseclasses import *
+from serium.caseclasses import CaseClass, cc_from_json_str, cc_to_json_str
+from collections import OrderedDict
 import time
 
 class X(CaseClass):

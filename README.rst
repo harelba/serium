@@ -91,8 +91,11 @@ Installation
 
 ``pip install serium``
 
+Examples
+========
+
 Basic Example
-=============
+-------------
 
 .. code:: python
 
@@ -102,6 +105,7 @@ Basic Example
     from uuid import uuid4
 
     from serium.caseclasses import CaseClass, cc_to_json_str, cc_from_json_str
+    from serium.caseclasses import SeriumEnv, CaseClassSerializationContext, CaseClassDeserializationContext, CaseClassJsonSerialization
     from serium.types import cc_list, cc_uuid
 
 
@@ -157,16 +161,7 @@ Basic Example
     serialized_book = cc_to_json_str(b)
     print serialized_book
     '''
-    {
-      "_ccvt": "Book/1",
-      "author": {
-        "_ccvt": "Author/1",
-        "author_id": 500,
-        "name": "Amos Oz"
-      },
-      "book_id": "1f028cef-0540-4c98-b8f6-c55a3c324c44",
-      "title": "A tale of Love and Darkness"
-    }
+    {"title": "A tale of Love and Darkness", "_ccvt": "Book/1", "book_id": "e3cb81c0-6555-45e6-8615-85fae4729bf1", "author": {"author_id": 500, "name": "Amos Oz", "_ccvt": "Author/1"}}
     '''
 
     # You can notice two things:
@@ -209,7 +204,7 @@ Basic Example
     # BASIC_EXAMPLE_END
 
 Data Migration Example
-======================
+----------------------
 
 .. code:: python
 
@@ -317,6 +312,39 @@ Data Migration Example
     # incrementally, without hurting the delivery schedules.
 
     # DATA_MIGRATION_EXAMPLE_END
+
+Finer control over serialization using SeriumEnv
+------------------------------------------------
+
+.. code:: python
+
+    # USING_SERIUM_ENV_EXAMPLE_START
+
+    # Let's see how we can modify the behaviour of serium by using a SeriumEnv. In this 
+    # example, we'll just make the json serialization more pretty:
+    env = SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization(indent=2,sort_keys=True))
+
+    # Now let's use the env we created in order to serialize the original book instance b:
+    print env.cc_to_json_str(b)
+    '''
+    {
+      "_ccvt": "Book/1",
+      "author": {
+        "_ccvt": "Author/1",
+        "author_id": 500,
+        "name": "Amos Oz"
+      },
+      "book_id": "c56675d3-10e0-42e9-af9a-b8462c4e1104",
+      "title": "A tale of Love and Darkness"
+    }
+    '''
+
+    # CaseClassSerializationContext and CaseClassDeserializationContext contain additional
+    # parameters that can control the ser/de process, mostly related to supporting writing
+    # to and reading from other systems which do not support versioning. See the docs
+    # for details on each of the params.
+
+    # USING_SERIUM_ENV_EXAMPLE_END
 
 Reference for case class definitions
 ====================================

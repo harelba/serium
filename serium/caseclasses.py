@@ -19,7 +19,7 @@ from serium.types import CaseClassListType, CaseClassDictType, CaseClassSelfType
 __all__ = ['CaseClass', 'cc_to_dict', 'cc_from_dict', 'cc_to_json_str', 'cc_to_json_str', 'cc_check',
            'create_default_env', 'default_to_version_1_func',
            'SeriumEnv', 'CaseClassSerializationContext', 'CaseClassDeserializationContext',
-           'CaseClassJsonSerialization']
+           'CaseClassJsonSerialization', 'cc_compact_json_serialization', 'cc_pretty_json_serialization']
 
 LOG = logging.getLogger('serium')
 
@@ -72,7 +72,8 @@ class FrozenCaseClassMetaClass(type):
                 if type(arg) != expected_type:
                     if issubclass(expected_type, CaseClass) and normalize_type_name(type(arg).__name__) == expected_type.__name__:
                         continue
-                    raise CaseClassUnexpectedFieldTypeException("For caseclass {} - Expected type for parameter {} is {}. Got value of type {}. Value is {}".format(cls, field_name, expected_type, type(arg), arg))
+                    raise CaseClassUnexpectedFieldTypeException(
+                        "For caseclass {} - Expected type for parameter {} is {}. Got value of type {}. Value is {}".format(cls, field_name, expected_type, type(arg), arg))
 
         # check_actual_parameters is called only after __init__ is done, to prevent the need for any reflection
         def check_actual_parameters(expected_types, d):
@@ -476,15 +477,24 @@ def default_to_version_1_func(cc_type, d):
 
 
 class CaseClassJsonSerialization(object):
-    def __init__(self, encoding='utf-8', indent=2):
+    def __init__(self, encoding='utf-8', **json_kwargs):
         self.encoding = encoding
-        self.indent = indent
+        self.json_kwargs = json_kwargs
 
     def serialize(self, d, **kwargs):
-        return json.dumps(d, encoding=self.encoding, indent=self.indent, sort_keys=True, **kwargs)
+        if len(kwargs) > 0:
+            effective_kwargs = dict(self.json_kwargs, **kwargs)
+        else:
+            effective_kwargs = self.json_kwargs
+        return json.dumps(d, **effective_kwargs)
 
     def deserialize(self, s):
         return json.loads(s, encoding=self.encoding)
+
+
+cc_compact_json_serialization = CaseClassJsonSerialization(indent=None, separators=(',', ':'), sort_keys=False)
+cc_standard_json_serialization = CaseClassJsonSerialization(indent=None, separators=(',', ': '), sort_keys=False)
+cc_pretty_json_serialization = CaseClassJsonSerialization(indent=2, separators=(',', ': '), sort_keys=True)
 
 
 class CaseClassSerializationContext(object):
@@ -544,7 +554,7 @@ class SeriumEnv(object):
                 return None
         if not isinstance(d, dict):
             raise CaseClassInvalidParameterException('Must provide a dict to convert to a case class. Provided object of type {}. value {}'.format(type(d), d))
-        return cc_type._from_dict(d, self.deserialization_ctx, self.cc_from_dict,self.cc_to_dict)
+        return cc_type._from_dict(d, self.deserialization_ctx, self.cc_from_dict, self.cc_to_dict)
 
     def cc_check(self, o, cc_type):
         if not isinstance(o, cc_type):
@@ -552,7 +562,8 @@ class SeriumEnv(object):
 
 
 def create_default_env():
-    return SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization())
+    return SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), cc_standard_json_serialization)
+
 
 default_env = create_default_env()
 
@@ -579,4 +590,3 @@ def cc_from_dict(d, cc_type, raise_on_empty=True):
 
 def cc_check(o, cc_type):
     return default_env.cc_check(o, cc_type)
-
