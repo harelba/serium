@@ -322,7 +322,14 @@ Finer control over serialization using SeriumEnv
 
     # Let's see how we can modify the behaviour of serium by using a SeriumEnv. In this 
     # example, we'll just make the json serialization more pretty:
-    env = SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), CaseClassJsonSerialization(indent=2,sort_keys=True))
+    from serium.caseclasses import cc_pretty_json_serialization, cc_compact_json_serialization
+    env = SeriumEnv(CaseClassSerializationContext(), CaseClassDeserializationContext(), cc_pretty_json_serialization)
+
+    # (cc_pretty_json_serialization is just a shortcut for specifying a CaseClassJsonSerialization() 
+    #  instance with some standard json-module parameters. You can just create your own instance
+    #  any parameters you'd like). 
+    # There's also a cc_compact_json_serialization which provides a standard compact json
+    # presentation.
 
     # Now let's use the env we created in order to serialize the original book instance b:
     print env.cc_to_json_str(b)
