@@ -23,6 +23,7 @@ This initial implementation of the library is in python, which is dynamically ty
 * Decoupling feature release from any maintenance/migration work is a good thing
 * Logicl evolution of the data strcutures is required in many real world use cases
 * The codebase and the programming language can serve as an accurate "distributed schema repository", taking advantage of standard code management tools
+* In many cases, the migration logic is relatively simple, and the cost of applying it during read (cpu+latency) is worth it if it means less roadblocks to production
 
 Due to these design assumptions, the library is currently optimized mainly for ease of development and iteration, and for decoupling between the developer's work and devops work. Obviously, once the concepts stabilize enough, speed/space optimizations will get into focus.
 
