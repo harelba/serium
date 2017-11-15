@@ -51,7 +51,7 @@ Design assumptions
    features
 -  Decoupling feature release from any maintenance/migration work is a
    good thing
--  Logicl evolution of the data strcutures is required in many real
+-  Logical evolution of the data strcutures is required in many real
    world use cases
 -  The codebase and the programming language can serve as an accurate
    “distributed schema repository”, taking advantage of standard code

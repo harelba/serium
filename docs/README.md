@@ -21,7 +21,7 @@ This initial implementation of the library is in python, which is dynamically ty
 ## Design assumptions
 * CPU/Memory is cheaper than developer time and time-to-market of new features
 * Decoupling feature release from any maintenance/migration work is a good thing
-* Logicl evolution of the data strcutures is required in many real world use cases
+* Logical evolution of the data strcutures is required in many real world use cases
 * The codebase and the programming language can serve as an accurate "distributed schema repository", taking advantage of standard code management tools
 * In many cases, the migration logic is relatively simple, and the cost of applying it during read (cpu+latency) is worth it if it means less roadblocks to production
 
